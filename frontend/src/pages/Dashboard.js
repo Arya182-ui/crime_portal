@@ -236,11 +236,6 @@ export default function Dashboard(){
   const firsTrend = recentData.map(d => ({ value: d.firs }));
   const criminalsTrend = recentData.map(d => ({ value: d.criminals }));
 
-  // Calculate deltas from stats breakdowns
-  const crimesDelta = stats?.crimesBreakdown?.percentageChange || null;
-  const firsDelta = stats?.firsBreakdown?.percentageChange || null;
-  const criminalsDelta = stats?.criminalsBreakdown?.percentageChange || null;
-
   // Prepare merged activities
   const activities = [];
   recentCrimes.forEach(c => activities.push({ 
@@ -334,7 +329,7 @@ export default function Dashboard(){
             value={loading ? '—' : stats?.totalCrimes ?? 0} 
             icon={<GavelIcon sx={{ fontSize: 28 }} />} 
             color="primary" 
-            delta={crimesDelta}
+            delta={stats?.deltas?.crimes ?? null}
             trend={crimesTrend}
           />
         </Grid>
@@ -342,21 +337,21 @@ export default function Dashboard(){
         <Grid item xs={12} sm={6} md={4}>
           <StatCard 
             title="Total FIRs" 
-            value={loading ? '—' : stats?.totalFirs ?? 0} 
+            value={loading ? '—' : stats?.openFirs ?? 0} 
             icon={<ReportIcon sx={{ fontSize: 28 }} />} 
             color="secondary" 
-            delta={firsDelta}
+            delta={stats?.deltas?.firs ?? null}
             trend={firsTrend}
           />
         </Grid>
 
         <Grid item xs={12} sm={6} md={4}>
           <StatCard 
-            title="Total Criminals" 
-            value={loading ? '—' : stats?.totalCriminals ?? 0} 
+            title="Known Criminals" 
+            value={loading ? '—' : stats?.knownCriminals ?? 0} 
             icon={<PeopleIcon sx={{ fontSize: 28 }} />} 
             color="success" 
-            delta={criminalsDelta}
+            delta={stats?.deltas?.criminals ?? null}
             trend={criminalsTrend}
           />
         </Grid>
