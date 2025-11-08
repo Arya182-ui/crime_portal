@@ -66,6 +66,19 @@ public class AuthController {
             // Update Firebase Auth user
             UserRecord userRecord = FirebaseAuth.getInstance().updateUser(request);
 
+            // Set role in Firebase custom claims (so it's available in token)
+            Map<String, Object> claims = new HashMap<>();
+            
+            // If updating existing profile, get role from Firestore if not provided
+            String roleToSet = role;
+            if (!isNewProfile && existingProfile != null && existingProfile.containsKey("role")) {
+                roleToSet = (String) existingProfile.getOrDefault("role", role);
+            }
+            
+            claims.put("role", roleToSet);
+            FirebaseAuth.getInstance().setCustomUserClaims(uid, claims);
+            System.out.println("✅ Firebase custom claims set - role: " + roleToSet);
+
             // Also save to Firestore for additional data
             Map<String, Object> data = new HashMap<>();
             data.put("userId", uid);
@@ -112,7 +125,29 @@ public class AuthController {
             }
             
             String role = SecurityUtil.getRole();
-            System.out.println("🔵 Role from SecurityUtil: " + role);
+            System.out.println("🔵 Role from token: " + role);
+            
+            // If no role in token, check Firestore and sync to token
+            if (role == null || role.isEmpty()) {
+                System.out.println("⚠️ No role in token, checking Firestore...");
+                try {
+                    Map<String, Object> profile = firestoreService.getDocument(COLLECTION, uid);
+                    if (profile != null && profile.containsKey("role")) {
+                        String firestoreRole = (String) profile.get("role");
+                        System.out.println("✅ Found role in Firestore: " + firestoreRole);
+                        
+                        // Sync to Firebase custom claims
+                        Map<String, Object> claims = new HashMap<>();
+                        claims.put("role", firestoreRole);
+                        FirebaseAuth.getInstance().setCustomUserClaims(uid, claims);
+                        System.out.println("✅ Synced role to Firebase token");
+                        
+                        role = firestoreRole;
+                    }
+                } catch (Exception ex) {
+                    System.err.println("⚠️ Failed to sync role from Firestore: " + ex.getMessage());
+                }
+            }
             
             return ResponseEntity.ok(Map.of("uid", uid, "role", role != null ? role : "NO_ROLE"));
         } catch (Exception e) {
