@@ -34,6 +34,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [emailSendWarning, setEmailSendWarning] = useState(false);
   const navigate = useNavigate();
 
   const getPasswordStrength = () => {
@@ -65,23 +66,44 @@ export default function Register() {
     setSuccess(false);
     const auth = getAuth();
     try {
+      // Step 1: Create Firebase user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
-      // Send email verification
-      await sendEmailVerification(userCredential.user);
+      console.log('User created successfully:', userCredential.user.uid);
       
       const token = await userCredential.user.getIdToken();
-      await axios.post(
-        (process.env.REACT_APP_API_URL || 'http://localhost:8080') + '/api/auth/profile',
-        { name, email },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      console.log('Token obtained successfully');
+      
+      // Step 2: Create profile in backend
+      try {
+        const response = await axios.post(
+          (process.env.REACT_APP_API_URL || 'http://localhost:8080') + '/api/auth/profile',
+          { name, email },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        console.log('Profile created successfully:', response.data);
+      } catch (profileErr) {
+        console.error('Profile creation error:', profileErr.response?.status, profileErr.response?.data);
+        // Continue - profile will be created on first login if it fails here
+      }
+      
+      // Step 3: Send email verification (don't block on failure)
+      let emailSent = false;
+      try {
+        await sendEmailVerification(userCredential.user);
+        console.log('Verification email sent successfully to:', email);
+        emailSent = true;
+      } catch (emailErr) {
+        console.error('Email verification error:', emailErr.code, emailErr.message);
+        setEmailSendWarning(true);   
+      }
+      
       setSuccess(true);
       setError(null);
+      
       // Navigate to login after showing success message
       setTimeout(() => {
         navigate('/login');
-      }, 3000);
+      }, emailSent ? 3000 : 5000); // More time if email warning shown
     } catch (err) {
       console.error('Registration error:', err);
       let errorMessage = 'Registration failed';
@@ -95,6 +117,8 @@ export default function Register() {
         errorMessage = 'Password is too weak. Use at least 6 characters.';
       } else if (err.code === 'auth/network-request-failed') {
         errorMessage = 'Network error. Please check your internet connection.';
+      } else if (err.response?.status === 401) {
+        errorMessage = 'Authentication error. Please try logging in.';
       } else if (err.message) {
         errorMessage = err.message;
       }
@@ -400,12 +424,24 @@ export default function Register() {
       {/* Success Snackbar */}
       <Snackbar
         open={success}
-        autoHideDuration={3000}
+        autoHideDuration={emailSendWarning ? 5000 : 3000}
         onClose={() => setSuccess(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
         <Alert onClose={() => setSuccess(false)} severity="success" variant="filled" icon={<CheckCircleIcon />}>
-          Account created successfully! Please check your email to verify your account before logging in.
+          Account created successfully! {emailSendWarning ? 'You can log in now.' : 'Please check your email to verify your account before logging in.'}
+        </Alert>
+      </Snackbar>
+
+      {/* Email Warning Snackbar */}
+      <Snackbar
+        open={emailSendWarning}
+        autoHideDuration={6000}
+        onClose={() => setEmailSendWarning(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setEmailSendWarning(false)} severity="warning" variant="filled">
+          Note: Verification email could not be sent. You can resend it from the login page after entering your credentials.
         </Alert>
       </Snackbar>
     </Box>
