@@ -55,7 +55,22 @@ export default function Profile() {
     try {
       const api = createApiClient(idToken);
       const response = await api.get('/auth/me');
-      setCurrentRole(response.data.role || 'No role set');
+      
+      // Backend now returns: { uid, role, status, name, email }
+      const { role, status, name, email } = response.data;
+      
+      setCurrentRole(role || 'No role set');
+      
+      // Update profile with backend data if available
+      if (name || email) {
+        setProfile(prev => ({
+          ...prev,
+          ...(name && { name }),
+          ...(email && { email })
+        }));
+      }
+      
+      console.log('✅ Profile loaded:', { role, status, name, email });
     } catch (error) {
       console.error('Failed to load profile:', error);
     }
