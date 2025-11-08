@@ -76,9 +76,9 @@ export default function Register() {
       
       // Step 3: Create profile in backend (status will be PENDING)
       try {
-        const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+        const apiBase = (process.env.REACT_APP_API_URL || 'http://localhost:8080') + '/api';
         const response = await axios.post(
-          `${apiBase}/api/auth/profile`,
+          `${apiBase}/auth/profile`,
           { name, email },
           { headers: { Authorization: `Bearer ${token}` } }
         );
