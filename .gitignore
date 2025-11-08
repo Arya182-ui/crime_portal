@@ -1,0 +1,39 @@
+# Root .gitignore for the project
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.iml
+
+# Logs
+logs/
+*.log
+
+# Maven
+target/
+
+# Node
+node_modules/
+/frontend/node_modules/
+
+# Build outputs
+frontend/build/
+
+# Env files (do NOT commit secrets)
+.env
+
+
+# Firebase local
+.firebase/
+
+# Service account or key files
+serviceAccount*.json
+*.pem
+
+# Other
+*.class
+*.jar

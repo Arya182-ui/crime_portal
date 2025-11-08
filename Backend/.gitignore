@@ -1,0 +1,27 @@
+# Backend .gitignore
+
+# Env and secrets
+.env
+.env.local
+.env.production
+.env.*.local
+serviceAccount*.json
+*serviceAccountKey*.json
+*.p12
+
+# Maven
+target/
+
+# IntelliJ
+*.iml
+.idea/
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+
+# Temporary files
+*.tmp
