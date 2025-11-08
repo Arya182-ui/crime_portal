@@ -90,6 +90,10 @@ export default function Register() {
       setSuccess(true);
       setError(null);
       
+      // Immediately logout after registration to prevent auto-login
+      await auth.signOut();
+      console.log('✅ Logged out after registration');
+      
       // Clear form
       setName('');
       setEmail('');
