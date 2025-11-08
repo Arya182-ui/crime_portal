@@ -102,10 +102,21 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<?> me() {
         try {
+            System.out.println("🔵 /me endpoint called");
             String uid = SecurityUtil.getUid();
-            if (uid == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthenticated"));
-            return ResponseEntity.ok(Map.of("uid", uid, "role", SecurityUtil.getRole()));
+            System.out.println("🔵 UID from SecurityUtil: " + uid);
+            
+            if (uid == null) {
+                System.out.println("⚠️ UID is null - returning 401");
+                return ResponseEntity.status(401).body(Map.of("error", "Unauthenticated"));
+            }
+            
+            String role = SecurityUtil.getRole();
+            System.out.println("🔵 Role from SecurityUtil: " + role);
+            
+            return ResponseEntity.ok(Map.of("uid", uid, "role", role != null ? role : "NO_ROLE"));
         } catch (Exception e) {
+            System.err.println("❌ Exception in /me endpoint: " + e.getClass().getName() + " - " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of("error", "Internal server error: " + e.getMessage()));
         }
