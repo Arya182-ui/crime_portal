@@ -149,7 +149,34 @@ public class AuthController {
                 }
             }
             
-            return ResponseEntity.ok(Map.of("uid", uid, "role", role != null ? role : "NO_ROLE"));
+            // Get status from Firestore (always fetch from database)
+            String status = null;
+            String name = null;
+            String email = null;
+            try {
+                Map<String, Object> profile = firestoreService.getDocument(COLLECTION, uid);
+                if (profile != null) {
+                    status = (String) profile.getOrDefault("status", "APPROVED");
+                    name = (String) profile.get("name");
+                    email = (String) profile.get("email");
+                    System.out.println("✅ Status from Firestore: " + status);
+                } else {
+                    System.out.println("⚠️ No profile found in Firestore - defaulting to APPROVED");
+                    status = "APPROVED";
+                }
+            } catch (Exception ex) {
+                System.err.println("⚠️ Failed to get status from Firestore: " + ex.getMessage());
+                status = "APPROVED"; // Default for legacy accounts
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("uid", uid);
+            response.put("role", role != null ? role : "NO_ROLE");
+            response.put("status", status);
+            if (name != null) response.put("name", name);
+            if (email != null) response.put("email", email);
+            
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             System.err.println("❌ Exception in /me endpoint: " + e.getClass().getName() + " - " + e.getMessage());
             e.printStackTrace();
