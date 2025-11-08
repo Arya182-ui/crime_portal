@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Container from '@mui/material/Container';
@@ -27,19 +27,81 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showResendLink, setShowResendLink] = useState(false);
   const navigate = useNavigate();
   const { idToken } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
+    setShowResendLink(false);
     const auth = getAuth();
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Check if email is verified
+      if (!userCredential.user.emailVerified) {
+        // Sign out the user
+        await auth.signOut();
+        setError('Please verify your email before logging in. Check your inbox for the verification link.');
+        setShowResendLink(true);
+        setLoading(false);
+        return;
+      }
+      
       navigate('/');
     } catch (err) {
-      setError(err?.message || 'Login failed');
+      console.error('Login error:', err.code, err.message);
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+        errorMessage = 'Invalid email or password.';
+      } else if (err.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address format.';
+      } else if (err.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed login attempts. Please try again later.';
+      } else if (err.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (err.code === 'auth/user-disabled') {
+        errorMessage = 'This account has been disabled.';
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!email || !password) {
+      setError('Please enter your email and password first.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    const auth = getAuth();
+    
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      if (userCredential.user.emailVerified) {
+        setSuccess('Your email is already verified! You can now log in.');
+        await auth.signOut();
+        setShowResendLink(false);
+        setLoading(false);
+        return;
+      }
+      
+      await sendEmailVerification(userCredential.user);
+      await auth.signOut();
+      setSuccess('Verification email sent! Please check your inbox.');
+      setShowResendLink(false);
+    } catch (err) {
+      setError('Failed to resend verification email. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -197,6 +259,26 @@ export default function Login() {
                 {loading ? 'Signing In...' : 'Sign In'}
               </Button>
 
+              {/* Resend Verification Link */}
+              {showResendLink && (
+                <Button
+                  onClick={handleResendVerification}
+                  variant="text"
+                  fullWidth
+                  size="small"
+                  disabled={loading}
+                  sx={{
+                    mt: 2,
+                    color: 'warning.main',
+                    '&:hover': {
+                      backgroundColor: 'rgba(237, 108, 2, 0.08)',
+                    },
+                  }}
+                >
+                  Resend Verification Email
+                </Button>
+              )}
+
               <Divider sx={{ my: 3 }}>
                 <Typography variant="body2" color="text.secondary">
                   OR
@@ -236,6 +318,7 @@ export default function Login() {
         </motion.div>
       </Container>
 
+      {/* Error Snackbar */}
       <Snackbar
         open={Boolean(error)}
         autoHideDuration={6000}
@@ -244,6 +327,18 @@ export default function Login() {
       >
         <Alert onClose={() => setError(null)} severity="error" variant="filled">
           {error}
+        </Alert>
+      </Snackbar>
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={Boolean(success)}
+        autoHideDuration={5000}
+        onClose={() => setSuccess(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setSuccess(null)} severity="success" variant="filled">
+          {success}
         </Alert>
       </Snackbar>
     </Box>
