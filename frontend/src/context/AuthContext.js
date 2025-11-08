@@ -37,8 +37,9 @@ export function AuthProvider({ children }) {
           
           // Check profile status
           try {
+            const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:8080';
             const statusResponse = await axios.get(
-              (process.env.REACT_APP_API_URL || 'http://localhost:8080') + '/api/auth/profile/status',
+              `${apiBase}/api/auth/profile/status`,
               { headers: { Authorization: `Bearer ${token}` } }
             );
             
@@ -51,6 +52,9 @@ export function AuthProvider({ children }) {
               setStatusMessage('Your account is pending admin approval.');
             } else if (status === 'REJECTED') {
               setStatusMessage('Your account has been rejected. Please contact support.');
+            } else if (status === 'APPROVED' || !status) {
+              // APPROVED or no status (for existing admin accounts)
+              setUserStatus('APPROVED');
             }
             
           } catch (profileErr) {
@@ -60,8 +64,9 @@ export function AuthProvider({ children }) {
             if (profileErr.response?.status === 401 || profileErr.response?.status === 404) {
               console.log('🔄 Attempting to create profile...');
               try {
+                const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:8080';
                 await axios.post(
-                  (process.env.REACT_APP_API_URL || 'http://localhost:8080') + '/api/auth/profile',
+                  `${apiBase}/api/auth/profile`,
                   { 
                     name: u.displayName || u.email?.split('@')[0] || 'User',
                     email: u.email 
@@ -75,6 +80,10 @@ export function AuthProvider({ children }) {
                 console.error('❌ Profile creation failed:', createErr.response?.status);
                 setProfileError(true);
               }
+            } else {
+              // For other errors (like existing admin without status field), allow access
+              console.log('ℹ️ Assuming legacy account with full access');
+              setUserStatus('APPROVED');
             }
           }
         } catch (error) {
