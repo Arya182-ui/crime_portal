@@ -10,7 +10,8 @@ import {
   Add as AddIcon, Search as SearchIcon, Clear as ClearIcon,
   ContentCopy as ContentCopyIcon, OpenInNew as OpenInNewIcon,
   Report as ReportIcon, Person as PersonIcon, Phone as PhoneIcon,
-  Description as DescriptionIcon, Gavel as GavelIcon, AccessTime as TimeIcon
+  Description as DescriptionIcon, Gavel as GavelIcon, AccessTime as TimeIcon,
+  Edit as EditIcon, Delete as DeleteIcon, Save as SaveIcon, Cancel as CancelIcon
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { createApiClient } from '../services/api';
@@ -22,7 +23,7 @@ function formatDate(s) {
 }
 
 export default function FIRs(){
-  const { idToken, user } = useAuth();
+  const { idToken, user, userRole } = useAuth();
   const api = createApiClient(idToken);
 
   const [complainantName, setComplainantName] = useState('');
@@ -40,6 +41,8 @@ export default function FIRs(){
   const [snack, setSnack] = useState({ open: false, severity: 'success', message: '' });
   const [selectedFir, setSelectedFir] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editedStatus, setEditedStatus] = useState('PENDING');
 
   const handleCreate = async () => {
     if (!complainantName || !contact || !details) {
@@ -63,6 +66,27 @@ export default function FIRs(){
       const newId = resp.data.firId;
       const firNumber = resp.data.firNumber;
       setSnack({ open: true, severity: 'success', message: `FIR created successfully! FIR Number: ${firNumber || newId}` });
+      
+      // Add newly created FIR to results immediately
+      const newFir = {
+        id: newId,
+        firId: newId,
+        firNumber: firNumber,
+        complainantName: complainantName,
+        contact: contact,
+        details: details,
+        crimeId: crimeId || null,
+        incidentLocation: incidentLocation || null,
+        incidentDate: incidentDate ? new Date(incidentDate).toISOString() : new Date().toISOString(),
+        status: status,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Add to top of results
+      setResults(prevResults => [newFir, ...prevResults]);
+      
+      // Clear form
       setComplainantName(''); 
       setContact(''); 
       setDetails(''); 
@@ -70,8 +94,11 @@ export default function FIRs(){
       setIncidentLocation('');
       setIncidentDate('');
       setStatus('PENDING');
-      // refresh list if a search is active
-      if (searchName) await handleSearch();
+      
+      // Also refresh the search results to get latest data from Firebase
+      if (searchName) {
+        setTimeout(() => handleSearch(), 500);
+      }
     } catch (e) {
       console.error(e);
       setSnack({ open: true, severity: 'error', message: e?.response?.data?.message || 'Create failed' });
@@ -94,10 +121,63 @@ export default function FIRs(){
     try {
       const resp = await api.get(`/firs/${id}`);
       setSelectedFir(resp.data);
+      setEditedStatus(resp.data.status || 'PENDING');
+      setEditMode(false);
       setDialogOpen(true);
     } catch (e) {
       console.error('Failed to fetch FIR', e);
       setSnack({ open: true, severity: 'error', message: 'Failed to load FIR details' });
+    }
+  };
+
+  const handleUpdateFir = async () => {
+    if (!selectedFir) return;
+    setLoading(true);
+    try {
+      await api.put(`/firs/${selectedFir.id}`, { status: editedStatus });
+      setSnack({ open: true, severity: 'success', message: 'FIR updated successfully!' });
+      
+      // Update in results list
+      setResults(prevResults => 
+        prevResults.map(r => r.id === selectedFir.id ? {...r, status: editedStatus} : r)
+      );
+      
+      // Update selected FIR
+      setSelectedFir({...selectedFir, status: editedStatus});
+      setEditMode(false);
+      
+      // Refresh if search active
+      if (searchName) {
+        setTimeout(() => handleSearch(), 500);
+      }
+    } catch (e) {
+      console.error(e);
+      setSnack({ open: true, severity: 'error', message: 'Failed to update FIR' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteFir = async () => {
+    if (!selectedFir) return;
+    if (!window.confirm(`Are you sure you want to delete FIR ${selectedFir.firNumber || selectedFir.id}?`)) {
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.delete(`/firs/${selectedFir.id}`);
+      setSnack({ open: true, severity: 'success', message: 'FIR deleted successfully!' });
+      
+      // Remove from results list
+      setResults(prevResults => prevResults.filter(r => r.id !== selectedFir.id));
+      
+      setDialogOpen(false);
+      setSelectedFir(null);
+    } catch (e) {
+      console.error(e);
+      setSnack({ open: true, severity: 'error', message: 'Failed to delete FIR' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -569,15 +649,33 @@ export default function FIRs(){
 
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 {selectedFir.status && (
-                  <Chip 
-                    label={selectedFir.status}
-                    color={
-                      selectedFir.status === 'CLOSED' ? 'default' :
-                      selectedFir.status === 'CHARGE_SHEET_FILED' ? 'success' :
-                      selectedFir.status === 'INVESTIGATING' || selectedFir.status === 'EVIDENCE_COLLECTED' ? 'primary' :
-                      selectedFir.status === 'REGISTERED' ? 'info' : 'warning'
-                    }
-                  />
+                  editMode && (userRole === 'ADMIN' || userRole === 'OFFICER') ? (
+                    <FormControl size="small" sx={{ minWidth: 200 }}>
+                      <InputLabel>Status</InputLabel>
+                      <Select
+                        value={editedStatus}
+                        label="Status"
+                        onChange={(e) => setEditedStatus(e.target.value)}
+                      >
+                        <MenuItem value="PENDING">Pending</MenuItem>
+                        <MenuItem value="REGISTERED">Registered</MenuItem>
+                        <MenuItem value="INVESTIGATING">Investigating</MenuItem>
+                        <MenuItem value="EVIDENCE_COLLECTED">Evidence Collected</MenuItem>
+                        <MenuItem value="CHARGE_SHEET_FILED">Charge Sheet Filed</MenuItem>
+                        <MenuItem value="CLOSED">Closed</MenuItem>
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <Chip 
+                      label={selectedFir.status}
+                      color={
+                        selectedFir.status === 'CLOSED' ? 'default' :
+                        selectedFir.status === 'CHARGE_SHEET_FILED' ? 'success' :
+                        selectedFir.status === 'INVESTIGATING' || selectedFir.status === 'EVIDENCE_COLLECTED' ? 'primary' :
+                        selectedFir.status === 'REGISTERED' ? 'info' : 'warning'
+                      }
+                    />
+                  )
                 )}
                 {selectedFir.crimeId ? (
                   <Chip 
@@ -613,19 +711,81 @@ export default function FIRs(){
         </DialogContent>
         <Divider />
         <DialogActions sx={{ p: 2, gap: 1 }}>
-          <Button 
-            startIcon={<ContentCopyIcon />}
-            onClick={()=>{ 
-              navigator.clipboard?.writeText(selectedFir?.id || ''); 
-              setSnack({ open:true, severity:'success', message:'FIR ID copied to clipboard' }); 
-            }}
-            variant="outlined"
-          >
-            Copy ID
-          </Button>
-          <Button onClick={()=>setDialogOpen(false)} variant="contained">
-            Close
-          </Button>
+          {editMode ? (
+            <>
+              <Button 
+                startIcon={<CancelIcon />}
+                onClick={() => {
+                  setEditMode(false);
+                  setEditedStatus(selectedFir?.status || 'PENDING');
+                }}
+                variant="outlined"
+              >
+                Cancel
+              </Button>
+              <Button 
+                startIcon={<SaveIcon />}
+                onClick={handleUpdateFir}
+                variant="contained"
+                disabled={loading}
+                sx={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #5568d3 0%, #653a8b 100%)'
+                  }
+                }}
+              >
+                {loading ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button 
+                startIcon={<ContentCopyIcon />}
+                onClick={()=>{ 
+                  navigator.clipboard?.writeText(selectedFir?.id || ''); 
+                  setSnack({ open:true, severity:'success', message:'FIR ID copied to clipboard' }); 
+                }}
+                variant="outlined"
+              >
+                Copy ID
+              </Button>
+              
+              {(userRole === 'ADMIN' || userRole === 'OFFICER') && (
+                <>
+                  <Button 
+                    startIcon={<EditIcon />}
+                    onClick={() => setEditMode(true)}
+                    variant="outlined"
+                    color="primary"
+                  >
+                    Edit
+                  </Button>
+                  {userRole === 'ADMIN' && (
+                    <Button 
+                      startIcon={<DeleteIcon />}
+                      onClick={handleDeleteFir}
+                      variant="outlined"
+                      color="error"
+                      disabled={loading}
+                    >
+                      Delete
+                    </Button>
+                  )}
+                </>
+              )}
+              
+              <Button 
+                onClick={()=>{
+                  setDialogOpen(false);
+                  setEditMode(false);
+                }} 
+                variant="contained"
+              >
+                Close
+              </Button>
+            </>
+          )}
         </DialogActions>
       </Dialog>
 
@@ -648,4 +808,3 @@ export default function FIRs(){
     </Box>
   );
 }
-
