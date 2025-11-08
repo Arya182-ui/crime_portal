@@ -187,9 +187,13 @@ export default function Dashboard(){
         api.get('/dashboard/stats'),
         api.get('/dashboard/charts/monthly'),
         api.get('/dashboard/top-locations'),
-        api.get('/crimes'),
-        api.get('/firs/search')
+        api.get('/crimes', { params: { limit: 100 } }),
+        api.get('/firs', { params: { limit: 100 } })
       ]);
+      
+      console.log('Dashboard stats:', dashStatsResp.data);
+      console.log('FIRs data:', firsResp.data);
+      
       setStats(dashStatsResp.data || {});
       setMonthlyData(chartsResp.data || []);
       setTopLocations(locationsResp.data || []);
@@ -206,8 +210,17 @@ export default function Dashboard(){
   useEffect(()=>{ 
     if (!authLoading && idToken) {
       load();
+      
+      // Auto-refresh every 30 seconds for admin/officers
+      if (userRole === 'ADMIN' || userRole === 'OFFICER') {
+        const interval = setInterval(() => {
+          load();
+        }, 30000); // 30 seconds
+        
+        return () => clearInterval(interval);
+      }
     }
-  }, [idToken, authLoading]);
+  }, [idToken, authLoading, userRole]);
 
   // Prepare chart data from monthly API
   const chartData = monthlyData.map(item => ({
