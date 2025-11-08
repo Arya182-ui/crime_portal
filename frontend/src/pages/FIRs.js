@@ -36,6 +36,8 @@ export default function FIRs(){
   const [status, setStatus] = useState('PENDING');
 
   const [searchName, setSearchName] = useState('');
+  const [searchFirNumber, setSearchFirNumber] = useState('');
+  const [searchType, setSearchType] = useState('name'); // 'name' or 'firNumber'
   const [results, setResults] = useState([]);
   const [showAll, setShowAll] = useState(false);
 
@@ -108,11 +110,35 @@ export default function FIRs(){
   };
 
   const handleSearch = async () => {
+    // Validation: Minimum 3 characters for name search, exact FIR number for FIR search
+    if (searchType === 'name') {
+      if (searchName.trim().length < 3) {
+        setSnack({ open: true, severity: 'warning', message: 'Please enter at least 3 characters to search' });
+        return;
+      }
+    } else if (searchType === 'firNumber') {
+      if (searchFirNumber.trim().length === 0) {
+        setSnack({ open: true, severity: 'warning', message: 'Please enter FIR Number' });
+        return;
+      }
+    }
+
     setLoading(true);
     try {
-      const resp = await api.get('/firs/search', { params: { complainantName: searchName } });
+      const params = {};
+      if (searchType === 'name') {
+        params.complainantName = searchName.trim();
+      } else if (searchType === 'firNumber') {
+        params.firNumber = searchFirNumber.trim();
+      }
+      
+      const resp = await api.get('/firs/search', { params });
       setResults(resp.data.items || []);
       setShowAll(false);
+      
+      if (resp.data.items?.length === 0) {
+        setSnack({ open: true, severity: 'info', message: 'No FIRs found matching your search' });
+      }
     } catch (e) {
       console.error(e);
       setSnack({ open: true, severity: 'error', message: 'Search failed' });
@@ -122,6 +148,7 @@ export default function FIRs(){
   const loadAllFirs = async () => {
     setLoading(true);
     setSearchName('');
+    setSearchFirNumber('');
     try {
       const resp = await api.get('/firs', { params: { limit: 100 } });
       setResults(resp.data.items || []);
@@ -418,27 +445,67 @@ export default function FIRs(){
               </Box>
               <Divider sx={{ mb: 3 }} />
 
+              {/* Search Type Selector */}
+              <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                <Chip
+                  label="Search by Name"
+                  onClick={() => setSearchType('name')}
+                  color={searchType === 'name' ? 'primary' : 'default'}
+                  variant={searchType === 'name' ? 'filled' : 'outlined'}
+                  icon={<PersonIcon />}
+                  sx={{ cursor: 'pointer' }}
+                />
+                <Chip
+                  label="Search by FIR Number"
+                  onClick={() => setSearchType('firNumber')}
+                  color={searchType === 'firNumber' ? 'primary' : 'default'}
+                  variant={searchType === 'firNumber' ? 'filled' : 'outlined'}
+                  icon={<ReportIcon />}
+                  sx={{ cursor: 'pointer' }}
+                />
+              </Stack>
+
               {/* Search Bar */}
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 3 }}>
-                <TextField 
-                  fullWidth
-                  size="small"
-                  placeholder="Search by complainant name..." 
-                  value={searchName} 
-                  onChange={e=>setSearchName(e.target.value)}
-                  onKeyDown={(e) => { if(e.key === 'Enter' && searchName) handleSearch(); }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon color="action" />
-                      </InputAdornment>
-                    )
-                  }}
-                />
+                {searchType === 'name' ? (
+                  <TextField 
+                    fullWidth
+                    size="small"
+                    placeholder="Enter complainant name (min 3 characters)..." 
+                    value={searchName} 
+                    onChange={e=>setSearchName(e.target.value)}
+                    onKeyDown={(e) => { if(e.key === 'Enter' && searchName.length >= 3) handleSearch(); }}
+                    helperText="Minimum 3 characters required"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PersonIcon color="action" />
+                        </InputAdornment>
+                      )
+                    }}
+                  />
+                ) : (
+                  <TextField 
+                    fullWidth
+                    size="small"
+                    placeholder="Enter complete FIR Number (e.g., FIR1234567890)..." 
+                    value={searchFirNumber} 
+                    onChange={e=>setSearchFirNumber(e.target.value)}
+                    onKeyDown={(e) => { if(e.key === 'Enter' && searchFirNumber) handleSearch(); }}
+                    helperText="Enter full FIR number"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <ReportIcon color="action" />
+                        </InputAdornment>
+                      )
+                    }}
+                  />
+                )}
                 <Button 
                   variant="contained" 
                   onClick={handleSearch} 
-                  disabled={loading || !searchName}
+                  disabled={loading || (searchType === 'name' ? searchName.length < 3 : !searchFirNumber)}
                   sx={{ 
                     minWidth: 100,
                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -463,7 +530,12 @@ export default function FIRs(){
                 <Button 
                   variant="outlined" 
                   startIcon={<ClearIcon />}
-                  onClick={()=>{ setSearchName(''); setResults([]); setShowAll(false); }} 
+                  onClick={()=>{ 
+                    setSearchName(''); 
+                    setSearchFirNumber('');
+                    setResults([]); 
+                    setShowAll(false); 
+                  }} 
                   disabled={loading}
                 >
                   Clear
@@ -503,11 +575,11 @@ export default function FIRs(){
                     <Typography variant="body2" color="text.secondary">
                       {showAll 
                         ? 'No FIRs available in the system' 
-                        : searchName 
-                          ? 'Try adjusting your search terms' 
+                        : (searchName || searchFirNumber)
+                          ? 'No FIRs found matching your search' 
                           : (userRole === 'ADMIN' || userRole === 'OFFICER') 
-                            ? 'Click "All FIRs" to view all FIRs' 
-                            : 'Enter a complainant name to search'
+                            ? 'Click "All FIRs" to view all FIRs or search using name/FIR number' 
+                            : 'Search by complainant name (min 3 chars) or FIR number'
                       }
                     </Typography>
                   </Box>
