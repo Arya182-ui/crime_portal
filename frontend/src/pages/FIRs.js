@@ -11,7 +11,8 @@ import {
   ContentCopy as ContentCopyIcon, OpenInNew as OpenInNewIcon,
   Report as ReportIcon, Person as PersonIcon, Phone as PhoneIcon,
   Description as DescriptionIcon, Gavel as GavelIcon, AccessTime as TimeIcon,
-  Edit as EditIcon, Delete as DeleteIcon, Save as SaveIcon, Cancel as CancelIcon
+  Edit as EditIcon, Delete as DeleteIcon, Save as SaveIcon, Cancel as CancelIcon,
+  Refresh as RefreshIcon, List as ListIcon
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { createApiClient } from '../services/api';
@@ -36,6 +37,7 @@ export default function FIRs(){
 
   const [searchName, setSearchName] = useState('');
   const [results, setResults] = useState([]);
+  const [showAll, setShowAll] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [snack, setSnack] = useState({ open: false, severity: 'success', message: '' });
@@ -110,11 +112,33 @@ export default function FIRs(){
     try {
       const resp = await api.get('/firs/search', { params: { complainantName: searchName } });
       setResults(resp.data.items || []);
+      setShowAll(false);
     } catch (e) {
       console.error(e);
       setSnack({ open: true, severity: 'error', message: 'Search failed' });
     } finally { setLoading(false); }
   };
+
+  const loadAllFirs = async () => {
+    setLoading(true);
+    setSearchName('');
+    try {
+      const resp = await api.get('/firs', { params: { limit: 100 } });
+      setResults(resp.data.items || []);
+      setShowAll(true);
+      setSnack({ open: true, severity: 'success', message: `Loaded ${resp.data.items?.length || 0} FIRs` });
+    } catch (e) {
+      console.error(e);
+      setSnack({ open: true, severity: 'error', message: 'Failed to load FIRs' });
+    } finally { setLoading(false); }
+  };
+
+  // Auto-load all FIRs for Admin/Officers on mount
+  React.useEffect(() => {
+    if (userRole === 'ADMIN' || userRole === 'OFFICER') {
+      loadAllFirs();
+    }
+  }, [userRole]);
 
   const openFirDialog = async (id) => {
     if (!id) return;
@@ -365,11 +389,32 @@ export default function FIRs(){
             }}
           >
             <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <SearchIcon color="primary" />
-                <Typography variant="h6" fontWeight={600}>
-                  Search FIRs
-                </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <SearchIcon color="primary" />
+                  <Typography variant="h6" fontWeight={600}>
+                    {showAll ? 'All FIRs' : 'Search FIRs'}
+                  </Typography>
+                  {showAll && (
+                    <Chip 
+                      label={`${results.length} FIRs`} 
+                      size="small" 
+                      color="primary"
+                      variant="outlined"
+                    />
+                  )}
+                </Box>
+                {(userRole === 'ADMIN' || userRole === 'OFFICER') && (
+                  <Button
+                    size="small"
+                    startIcon={<RefreshIcon />}
+                    onClick={loadAllFirs}
+                    disabled={loading}
+                    variant="outlined"
+                  >
+                    Refresh
+                  </Button>
+                )}
               </Box>
               <Divider sx={{ mb: 3 }} />
 
@@ -404,10 +449,21 @@ export default function FIRs(){
                 >
                   Search
                 </Button>
+                {(userRole === 'ADMIN' || userRole === 'OFFICER') && (
+                  <Button 
+                    variant="outlined" 
+                    startIcon={<ListIcon />}
+                    onClick={loadAllFirs} 
+                    disabled={loading}
+                    color="primary"
+                  >
+                    All FIRs
+                  </Button>
+                )}
                 <Button 
                   variant="outlined" 
                   startIcon={<ClearIcon />}
-                  onClick={()=>{ setSearchName(''); setResults([]); }} 
+                  onClick={()=>{ setSearchName(''); setResults([]); setShowAll(false); }} 
                   disabled={loading}
                 >
                   Clear
@@ -445,7 +501,14 @@ export default function FIRs(){
                       No FIRs Found
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {searchName ? 'Try adjusting your search terms' : 'Enter a complainant name to search'}
+                      {showAll 
+                        ? 'No FIRs available in the system' 
+                        : searchName 
+                          ? 'Try adjusting your search terms' 
+                          : (userRole === 'ADMIN' || userRole === 'OFFICER') 
+                            ? 'Click "All FIRs" to view all FIRs' 
+                            : 'Enter a complainant name to search'
+                      }
                     </Typography>
                   </Box>
                 )}
