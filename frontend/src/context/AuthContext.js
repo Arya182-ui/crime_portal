@@ -37,9 +37,9 @@ export function AuthProvider({ children }) {
           
           // Check profile status
           try {
-            const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+            const apiBase = (process.env.REACT_APP_API_URL || 'http://localhost:8080') + '/api';
             const statusResponse = await axios.get(
-              `${apiBase}/api/auth/profile/status`,
+              `${apiBase}/auth/profile/status`,
               { headers: { Authorization: `Bearer ${token}` } }
             );
             
@@ -64,9 +64,9 @@ export function AuthProvider({ children }) {
             if (profileErr.response?.status === 401 || profileErr.response?.status === 404) {
               console.log('🔄 Attempting to create profile...');
               try {
-                const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+                const apiBase = (process.env.REACT_APP_API_URL || 'http://localhost:8080') + '/api';
                 await axios.post(
-                  `${apiBase}/api/auth/profile`,
+                  `${apiBase}/auth/profile`,
                   { 
                     name: u.displayName || u.email?.split('@')[0] || 'User',
                     email: u.email 
