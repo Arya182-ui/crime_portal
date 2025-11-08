@@ -348,21 +348,6 @@ export default function FIRs(){
                   onChange={e=>setIncidentDate(e.target.value)}
                   InputLabelProps={{ shrink: true }}
                 />
-                <FormControl fullWidth>
-                  <InputLabel>FIR Status</InputLabel>
-                  <Select
-                    value={status}
-                    label="FIR Status"
-                    onChange={e=>setStatus(e.target.value)}
-                  >
-                    <MenuItem value="PENDING">Pending</MenuItem>
-                    <MenuItem value="REGISTERED">Registered</MenuItem>
-                    <MenuItem value="INVESTIGATING">Investigating</MenuItem>
-                    <MenuItem value="EVIDENCE_COLLECTED">Evidence Collected</MenuItem>
-                    <MenuItem value="CHARGE_SHEET_FILED">Charge Sheet Filed</MenuItem>
-                    <MenuItem value="CLOSED">Closed</MenuItem>
-                  </Select>
-                </FormControl>
                 <TextField 
                   fullWidth 
                   label="Related Crime ID (Optional)" 
@@ -376,6 +361,25 @@ export default function FIRs(){
                     )
                   }}
                 />
+                
+                {/* Status info - not editable by user */}
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary" 
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1,
+                    p: 1.5,
+                    bgcolor: 'info.lighter',
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: 'info.light'
+                  }}
+                >
+                  <ReportIcon fontSize="small" color="info" />
+                  New FIR will be created with <strong>PENDING</strong> status. Admin/Officer will update it later.
+                </Typography>
                 
                 <Button
                   fullWidth
@@ -943,3 +947,4 @@ export default function FIRs(){
     </Box>
   );
 }
+
