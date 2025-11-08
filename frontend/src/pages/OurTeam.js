@@ -62,7 +62,7 @@ const teamMembers = [
     skills: ['UI/UX Design', 'React', 'Figma', 'Responsive Design'],
   },
   {
-    name: 'Pallavi Gangwar',
+    name: 'Pallavi Kumari',
     rollNo: 'BCS2023115',
     role: 'Database Administrator',
     avatar: 'PG',
