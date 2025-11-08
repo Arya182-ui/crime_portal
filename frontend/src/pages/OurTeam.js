@@ -94,7 +94,7 @@ const mentor = {
   name: 'Chetan Dhakad',
   role: 'Project Mentor & Guide',
   avatar: 'CD',
-  avatarImage: 'https://ibb.co/LdPhdRC2', // Use direct image link
+  avatarImage: 'https://i.ibb.co/yFRBFP8b/Whats-App-Image-2025-11-08-at-22-27-58-feb0037b.jpg', // Use direct image link
   color: '#6a1b9a',
   icon: <PsychologyIcon />,
   skills: ['Project Guidance', 'Technical Mentorship', 'Code Review', 'Best Practices'],
