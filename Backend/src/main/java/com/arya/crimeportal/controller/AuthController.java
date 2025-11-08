@@ -101,9 +101,14 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<?> me() {
-        String uid = SecurityUtil.getUid();
-        if (uid == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthenticated"));
-        return ResponseEntity.ok(Map.of("uid", uid, "role", SecurityUtil.getRole()));
+        try {
+            String uid = SecurityUtil.getUid();
+            if (uid == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthenticated"));
+            return ResponseEntity.ok(Map.of("uid", uid, "role", SecurityUtil.getRole()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Internal server error: " + e.getMessage()));
+        }
     }
 
     // Set Firebase custom claims for role (for development/testing - in production, restrict this!)
