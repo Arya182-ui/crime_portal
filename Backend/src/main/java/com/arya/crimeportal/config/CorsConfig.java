@@ -36,7 +36,13 @@ public class CorsConfig {
             // Development helper: allow any origin (use only for local/dev testing)
             config.setAllowedOriginPatterns(List.of("*"));
         } else {
-            List<String> origins = Arrays.stream(effectiveFrontend.split(",")).map(String::trim).collect(Collectors.toList());
+            List<String> origins = Arrays.stream(effectiveFrontend.split(","))
+                .map(String::trim)
+                .collect(Collectors.toList());
+            // Always include common frontend URLs
+            if (!origins.contains("https://crimeportal-mu.vercel.app")) {
+                origins.add("https://crimeportal-mu.vercel.app");
+            }
             config.setAllowedOrigins(origins);
         }
         config.setAllowedHeaders(List.of("*"));
@@ -61,7 +67,13 @@ public class CorsConfig {
         if (effectiveAllowAll) {
             config.setAllowedOriginPatterns(List.of("*"));
         } else {
-            List<String> origins = Arrays.stream(effectiveFrontend.split(",")).map(String::trim).collect(Collectors.toList());
+            List<String> origins = Arrays.stream(effectiveFrontend.split(","))
+                .map(String::trim)
+                .collect(Collectors.toList());
+            // Always include common frontend URLs
+            if (!origins.contains("https://crimeportal-mu.vercel.app")) {
+                origins.add("https://crimeportal-mu.vercel.app");
+            }
             config.setAllowedOrigins(origins);
         }
         config.setAllowedHeaders(List.of("*"));
