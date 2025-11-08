@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import axios from 'axios';
 import Container from '@mui/material/Container';
@@ -34,7 +34,6 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const [emailSendWarning, setEmailSendWarning] = useState(false);
   const navigate = useNavigate();
 
   const getPasswordStrength = () => {
@@ -65,47 +64,44 @@ export default function Register() {
     setError(null);
     setSuccess(false);
     const auth = getAuth();
+    
     try {
       // Step 1: Create Firebase user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      console.log('User created successfully:', userCredential.user.uid);
+      console.log('✅ User created successfully:', userCredential.user.uid);
       
-      const token = await userCredential.user.getIdToken();
-      console.log('Token obtained successfully');
+      // Step 2: Get token
+      const token = await userCredential.user.getIdToken(true);
+      console.log('✅ Token obtained successfully');
       
-      // Step 2: Create profile in backend
+      // Step 3: Create profile in backend (status will be PENDING)
       try {
         const response = await axios.post(
           (process.env.REACT_APP_API_URL || 'http://localhost:8080') + '/api/auth/profile',
           { name, email },
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        console.log('Profile created successfully:', response.data);
+        console.log('✅ Profile created successfully:', response.data);
       } catch (profileErr) {
-        console.error('Profile creation error:', profileErr.response?.status, profileErr.response?.data);
-        // Continue - profile will be created on first login if it fails here
-      }
-      
-      // Step 3: Send email verification (don't block on failure)
-      let emailSent = false;
-      try {
-        await sendEmailVerification(userCredential.user);
-        console.log('Verification email sent successfully to:', email);
-        emailSent = true;
-      } catch (emailErr) {
-        console.error('Email verification error:', emailErr.code, emailErr.message);
-        setEmailSendWarning(true);   
+        console.error('⚠️ Profile creation error:', profileErr.response?.status, profileErr.response?.data);
+        console.log('ℹ️ Profile will be created automatically on first login');
       }
       
       setSuccess(true);
       setError(null);
       
+      // Clear form
+      setName('');
+      setEmail('');
+      setPassword('');
+      setConfirm('');
+      
       // Navigate to login after showing success message
       setTimeout(() => {
         navigate('/login');
-      }, emailSent ? 3000 : 5000); // More time if email warning shown
+      }, 3000);
     } catch (err) {
-      console.error('Registration error:', err);
+      console.error('❌ Registration error:', err);
       let errorMessage = 'Registration failed';
       
       // Handle Firebase authentication errors
@@ -424,24 +420,12 @@ export default function Register() {
       {/* Success Snackbar */}
       <Snackbar
         open={success}
-        autoHideDuration={emailSendWarning ? 5000 : 3000}
+        autoHideDuration={3000}
         onClose={() => setSuccess(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
         <Alert onClose={() => setSuccess(false)} severity="success" variant="filled" icon={<CheckCircleIcon />}>
-          Account created successfully! {emailSendWarning ? 'You can log in now.' : 'Please check your email to verify your account before logging in.'}
-        </Alert>
-      </Snackbar>
-
-      {/* Email Warning Snackbar */}
-      <Snackbar
-        open={emailSendWarning}
-        autoHideDuration={6000}
-        onClose={() => setEmailSendWarning(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert onClose={() => setEmailSendWarning(false)} severity="warning" variant="filled">
-          Note: Verification email could not be sent. You can resend it from the login page after entering your credentials.
+          Account created successfully! Please wait for admin approval before logging in.
         </Alert>
       </Snackbar>
     </Box>
