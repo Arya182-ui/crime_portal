@@ -10,7 +10,9 @@ import {
   Add as AddIcon, Search as SearchIcon, Clear as ClearIcon,
   ContentCopy as ContentCopyIcon, OpenInNew as OpenInNewIcon,
   Report as ReportIcon, Person as PersonIcon, Phone as PhoneIcon,
-  Description as DescriptionIcon, Gavel as GavelIcon, AccessTime as TimeIcon
+  Description as DescriptionIcon, Gavel as GavelIcon, AccessTime as TimeIcon,
+  Edit as EditIcon, Delete as DeleteIcon, Save as SaveIcon, Cancel as CancelIcon,
+  Refresh as RefreshIcon, List as ListIcon
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { createApiClient } from '../services/api';
@@ -22,7 +24,7 @@ function formatDate(s) {
 }
 
 export default function FIRs(){
-  const { idToken, user } = useAuth();
+  const { idToken, user, userRole } = useAuth();
   const api = createApiClient(idToken);
 
   const [complainantName, setComplainantName] = useState('');
@@ -34,12 +36,17 @@ export default function FIRs(){
   const [status, setStatus] = useState('PENDING');
 
   const [searchName, setSearchName] = useState('');
+  const [searchFirNumber, setSearchFirNumber] = useState('');
+  const [searchType, setSearchType] = useState('name'); // 'name' or 'firNumber'
   const [results, setResults] = useState([]);
+  const [showAll, setShowAll] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [snack, setSnack] = useState({ open: false, severity: 'success', message: '' });
   const [selectedFir, setSelectedFir] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editedStatus, setEditedStatus] = useState('PENDING');
 
   const handleCreate = async () => {
     if (!complainantName || !contact || !details) {
@@ -63,6 +70,27 @@ export default function FIRs(){
       const newId = resp.data.firId;
       const firNumber = resp.data.firNumber;
       setSnack({ open: true, severity: 'success', message: `FIR created successfully! FIR Number: ${firNumber || newId}` });
+      
+      // Add newly created FIR to results immediately
+      const newFir = {
+        id: newId,
+        firId: newId,
+        firNumber: firNumber,
+        complainantName: complainantName,
+        contact: contact,
+        details: details,
+        crimeId: crimeId || null,
+        incidentLocation: incidentLocation || null,
+        incidentDate: incidentDate ? new Date(incidentDate).toISOString() : new Date().toISOString(),
+        status: status,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Add to top of results
+      setResults(prevResults => [newFir, ...prevResults]);
+      
+      // Clear form
       setComplainantName(''); 
       setContact(''); 
       setDetails(''); 
@@ -70,8 +98,11 @@ export default function FIRs(){
       setIncidentLocation('');
       setIncidentDate('');
       setStatus('PENDING');
-      // refresh list if a search is active
-      if (searchName) await handleSearch();
+      
+      // Also refresh the search results to get latest data from Firebase
+      if (searchName) {
+        setTimeout(() => handleSearch(), 500);
+      }
     } catch (e) {
       console.error(e);
       setSnack({ open: true, severity: 'error', message: e?.response?.data?.message || 'Create failed' });
@@ -79,25 +110,125 @@ export default function FIRs(){
   };
 
   const handleSearch = async () => {
+    // Validation: Minimum 3 characters for name search, exact FIR number for FIR search
+    if (searchType === 'name') {
+      if (searchName.trim().length < 3) {
+        setSnack({ open: true, severity: 'warning', message: 'Please enter at least 3 characters to search' });
+        return;
+      }
+    } else if (searchType === 'firNumber') {
+      if (searchFirNumber.trim().length === 0) {
+        setSnack({ open: true, severity: 'warning', message: 'Please enter FIR Number' });
+        return;
+      }
+    }
+
     setLoading(true);
     try {
-      const resp = await api.get('/firs/search', { params: { complainantName: searchName } });
+      const params = {};
+      if (searchType === 'name') {
+        params.complainantName = searchName.trim();
+      } else if (searchType === 'firNumber') {
+        params.firNumber = searchFirNumber.trim();
+      }
+      
+      const resp = await api.get('/firs/search', { params });
       setResults(resp.data.items || []);
+      setShowAll(false);
+      
+      if (resp.data.items?.length === 0) {
+        setSnack({ open: true, severity: 'info', message: 'No FIRs found matching your search' });
+      }
     } catch (e) {
       console.error(e);
       setSnack({ open: true, severity: 'error', message: 'Search failed' });
     } finally { setLoading(false); }
   };
 
+  const loadAllFirs = async () => {
+    setLoading(true);
+    setSearchName('');
+    setSearchFirNumber('');
+    try {
+      const resp = await api.get('/firs', { params: { limit: 100 } });
+      setResults(resp.data.items || []);
+      setShowAll(true);
+      setSnack({ open: true, severity: 'success', message: `Loaded ${resp.data.items?.length || 0} FIRs` });
+    } catch (e) {
+      console.error(e);
+      setSnack({ open: true, severity: 'error', message: 'Failed to load FIRs' });
+    } finally { setLoading(false); }
+  };
+
+  // Auto-load all FIRs for Admin/Officers on mount
+  React.useEffect(() => {
+    if (userRole === 'ADMIN' || userRole === 'OFFICER') {
+      loadAllFirs();
+    }
+  }, [userRole]);
+
   const openFirDialog = async (id) => {
     if (!id) return;
     try {
       const resp = await api.get(`/firs/${id}`);
       setSelectedFir(resp.data);
+      setEditedStatus(resp.data.status || 'PENDING');
+      setEditMode(false);
       setDialogOpen(true);
     } catch (e) {
       console.error('Failed to fetch FIR', e);
       setSnack({ open: true, severity: 'error', message: 'Failed to load FIR details' });
+    }
+  };
+
+  const handleUpdateFir = async () => {
+    if (!selectedFir) return;
+    setLoading(true);
+    try {
+      await api.put(`/firs/${selectedFir.id}`, { status: editedStatus });
+      setSnack({ open: true, severity: 'success', message: 'FIR updated successfully!' });
+      
+      // Update in results list
+      setResults(prevResults => 
+        prevResults.map(r => r.id === selectedFir.id ? {...r, status: editedStatus} : r)
+      );
+      
+      // Update selected FIR
+      setSelectedFir({...selectedFir, status: editedStatus});
+      setEditMode(false);
+      
+      // Refresh if search active
+      if (searchName) {
+        setTimeout(() => handleSearch(), 500);
+      }
+    } catch (e) {
+      console.error(e);
+      setSnack({ open: true, severity: 'error', message: 'Failed to update FIR' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteFir = async () => {
+    if (!selectedFir) return;
+    if (!window.confirm(`Are you sure you want to delete FIR ${selectedFir.firNumber || selectedFir.id}?`)) {
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.delete(`/firs/${selectedFir.id}`);
+      setSnack({ open: true, severity: 'success', message: 'FIR deleted successfully!' });
+      
+      // Remove from results list
+      setResults(prevResults => prevResults.filter(r => r.id !== selectedFir.id));
+      
+      setDialogOpen(false);
+      setSelectedFir(null);
+    } catch (e) {
+      console.error(e);
+      setSnack({ open: true, severity: 'error', message: 'Failed to delete FIR' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -217,21 +348,6 @@ export default function FIRs(){
                   onChange={e=>setIncidentDate(e.target.value)}
                   InputLabelProps={{ shrink: true }}
                 />
-                <FormControl fullWidth>
-                  <InputLabel>FIR Status</InputLabel>
-                  <Select
-                    value={status}
-                    label="FIR Status"
-                    onChange={e=>setStatus(e.target.value)}
-                  >
-                    <MenuItem value="PENDING">Pending</MenuItem>
-                    <MenuItem value="REGISTERED">Registered</MenuItem>
-                    <MenuItem value="INVESTIGATING">Investigating</MenuItem>
-                    <MenuItem value="EVIDENCE_COLLECTED">Evidence Collected</MenuItem>
-                    <MenuItem value="CHARGE_SHEET_FILED">Charge Sheet Filed</MenuItem>
-                    <MenuItem value="CLOSED">Closed</MenuItem>
-                  </Select>
-                </FormControl>
                 <TextField 
                   fullWidth 
                   label="Related Crime ID (Optional)" 
@@ -245,6 +361,25 @@ export default function FIRs(){
                     )
                   }}
                 />
+                
+                {/* Status info - not editable by user */}
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary" 
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1,
+                    p: 1.5,
+                    bgcolor: 'info.lighter',
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: 'info.light'
+                  }}
+                >
+                  <ReportIcon fontSize="small" color="info" />
+                  New FIR will be created with <strong>PENDING</strong> status. Admin/Officer will update it later.
+                </Typography>
                 
                 <Button
                   fullWidth
@@ -285,35 +420,96 @@ export default function FIRs(){
             }}
           >
             <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <SearchIcon color="primary" />
-                <Typography variant="h6" fontWeight={600}>
-                  Search FIRs
-                </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <SearchIcon color="primary" />
+                  <Typography variant="h6" fontWeight={600}>
+                    {showAll ? 'All FIRs' : 'Search FIRs'}
+                  </Typography>
+                  {showAll && (
+                    <Chip 
+                      label={`${results.length} FIRs`} 
+                      size="small" 
+                      color="primary"
+                      variant="outlined"
+                    />
+                  )}
+                </Box>
+                {(userRole === 'ADMIN' || userRole === 'OFFICER') && (
+                  <Button
+                    size="small"
+                    startIcon={<RefreshIcon />}
+                    onClick={loadAllFirs}
+                    disabled={loading}
+                    variant="outlined"
+                  >
+                    Refresh
+                  </Button>
+                )}
               </Box>
               <Divider sx={{ mb: 3 }} />
 
+              {/* Search Type Selector */}
+              <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                <Chip
+                  label="Search by Name"
+                  onClick={() => setSearchType('name')}
+                  color={searchType === 'name' ? 'primary' : 'default'}
+                  variant={searchType === 'name' ? 'filled' : 'outlined'}
+                  icon={<PersonIcon />}
+                  sx={{ cursor: 'pointer' }}
+                />
+                <Chip
+                  label="Search by FIR Number"
+                  onClick={() => setSearchType('firNumber')}
+                  color={searchType === 'firNumber' ? 'primary' : 'default'}
+                  variant={searchType === 'firNumber' ? 'filled' : 'outlined'}
+                  icon={<ReportIcon />}
+                  sx={{ cursor: 'pointer' }}
+                />
+              </Stack>
+
               {/* Search Bar */}
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 3 }}>
-                <TextField 
-                  fullWidth
-                  size="small"
-                  placeholder="Search by complainant name..." 
-                  value={searchName} 
-                  onChange={e=>setSearchName(e.target.value)}
-                  onKeyDown={(e) => { if(e.key === 'Enter' && searchName) handleSearch(); }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon color="action" />
-                      </InputAdornment>
-                    )
-                  }}
-                />
+                {searchType === 'name' ? (
+                  <TextField 
+                    fullWidth
+                    size="small"
+                    placeholder="Enter complainant name (min 3 characters)..." 
+                    value={searchName} 
+                    onChange={e=>setSearchName(e.target.value)}
+                    onKeyDown={(e) => { if(e.key === 'Enter' && searchName.length >= 3) handleSearch(); }}
+                    helperText="Minimum 3 characters required"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PersonIcon color="action" />
+                        </InputAdornment>
+                      )
+                    }}
+                  />
+                ) : (
+                  <TextField 
+                    fullWidth
+                    size="small"
+                    placeholder="Enter complete FIR Number (e.g., FIR1234567890)..." 
+                    value={searchFirNumber} 
+                    onChange={e=>setSearchFirNumber(e.target.value)}
+                    onKeyDown={(e) => { if(e.key === 'Enter' && searchFirNumber) handleSearch(); }}
+                    helperText="Enter full FIR number"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <ReportIcon color="action" />
+                        </InputAdornment>
+                      )
+                    }}
+                  />
+                )}
                 <Button 
                   variant="contained" 
                   onClick={handleSearch} 
-                  disabled={loading || !searchName}
+                  disabled={loading || (searchType === 'name' ? searchName.length < 3 : !searchFirNumber)}
                   sx={{ 
                     minWidth: 100,
                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -324,10 +520,26 @@ export default function FIRs(){
                 >
                   Search
                 </Button>
+                {(userRole === 'ADMIN' || userRole === 'OFFICER') && (
+                  <Button 
+                    variant="outlined" 
+                    startIcon={<ListIcon />}
+                    onClick={loadAllFirs} 
+                    disabled={loading}
+                    color="primary"
+                  >
+                    All FIRs
+                  </Button>
+                )}
                 <Button 
                   variant="outlined" 
                   startIcon={<ClearIcon />}
-                  onClick={()=>{ setSearchName(''); setResults([]); }} 
+                  onClick={()=>{ 
+                    setSearchName(''); 
+                    setSearchFirNumber('');
+                    setResults([]); 
+                    setShowAll(false); 
+                  }} 
                   disabled={loading}
                 >
                   Clear
@@ -365,7 +577,14 @@ export default function FIRs(){
                       No FIRs Found
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {searchName ? 'Try adjusting your search terms' : 'Enter a complainant name to search'}
+                      {showAll 
+                        ? 'No FIRs available in the system' 
+                        : (searchName || searchFirNumber)
+                          ? 'No FIRs found matching your search' 
+                          : (userRole === 'ADMIN' || userRole === 'OFFICER') 
+                            ? 'Click "All FIRs" to view all FIRs or search using name/FIR number' 
+                            : 'Search by complainant name (min 3 chars) or FIR number'
+                      }
                     </Typography>
                   </Box>
                 )}
@@ -569,15 +788,33 @@ export default function FIRs(){
 
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 {selectedFir.status && (
-                  <Chip 
-                    label={selectedFir.status}
-                    color={
-                      selectedFir.status === 'CLOSED' ? 'default' :
-                      selectedFir.status === 'CHARGE_SHEET_FILED' ? 'success' :
-                      selectedFir.status === 'INVESTIGATING' || selectedFir.status === 'EVIDENCE_COLLECTED' ? 'primary' :
-                      selectedFir.status === 'REGISTERED' ? 'info' : 'warning'
-                    }
-                  />
+                  editMode && (userRole === 'ADMIN' || userRole === 'OFFICER') ? (
+                    <FormControl size="small" sx={{ minWidth: 200 }}>
+                      <InputLabel>Status</InputLabel>
+                      <Select
+                        value={editedStatus}
+                        label="Status"
+                        onChange={(e) => setEditedStatus(e.target.value)}
+                      >
+                        <MenuItem value="PENDING">Pending</MenuItem>
+                        <MenuItem value="REGISTERED">Registered</MenuItem>
+                        <MenuItem value="INVESTIGATING">Investigating</MenuItem>
+                        <MenuItem value="EVIDENCE_COLLECTED">Evidence Collected</MenuItem>
+                        <MenuItem value="CHARGE_SHEET_FILED">Charge Sheet Filed</MenuItem>
+                        <MenuItem value="CLOSED">Closed</MenuItem>
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <Chip 
+                      label={selectedFir.status}
+                      color={
+                        selectedFir.status === 'CLOSED' ? 'default' :
+                        selectedFir.status === 'CHARGE_SHEET_FILED' ? 'success' :
+                        selectedFir.status === 'INVESTIGATING' || selectedFir.status === 'EVIDENCE_COLLECTED' ? 'primary' :
+                        selectedFir.status === 'REGISTERED' ? 'info' : 'warning'
+                      }
+                    />
+                  )
                 )}
                 {selectedFir.crimeId ? (
                   <Chip 
@@ -613,19 +850,81 @@ export default function FIRs(){
         </DialogContent>
         <Divider />
         <DialogActions sx={{ p: 2, gap: 1 }}>
-          <Button 
-            startIcon={<ContentCopyIcon />}
-            onClick={()=>{ 
-              navigator.clipboard?.writeText(selectedFir?.id || ''); 
-              setSnack({ open:true, severity:'success', message:'FIR ID copied to clipboard' }); 
-            }}
-            variant="outlined"
-          >
-            Copy ID
-          </Button>
-          <Button onClick={()=>setDialogOpen(false)} variant="contained">
-            Close
-          </Button>
+          {editMode ? (
+            <>
+              <Button 
+                startIcon={<CancelIcon />}
+                onClick={() => {
+                  setEditMode(false);
+                  setEditedStatus(selectedFir?.status || 'PENDING');
+                }}
+                variant="outlined"
+              >
+                Cancel
+              </Button>
+              <Button 
+                startIcon={<SaveIcon />}
+                onClick={handleUpdateFir}
+                variant="contained"
+                disabled={loading}
+                sx={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #5568d3 0%, #653a8b 100%)'
+                  }
+                }}
+              >
+                {loading ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button 
+                startIcon={<ContentCopyIcon />}
+                onClick={()=>{ 
+                  navigator.clipboard?.writeText(selectedFir?.id || ''); 
+                  setSnack({ open:true, severity:'success', message:'FIR ID copied to clipboard' }); 
+                }}
+                variant="outlined"
+              >
+                Copy ID
+              </Button>
+              
+              {(userRole === 'ADMIN' || userRole === 'OFFICER') && (
+                <>
+                  <Button 
+                    startIcon={<EditIcon />}
+                    onClick={() => setEditMode(true)}
+                    variant="outlined"
+                    color="primary"
+                  >
+                    Edit
+                  </Button>
+                  {userRole === 'ADMIN' && (
+                    <Button 
+                      startIcon={<DeleteIcon />}
+                      onClick={handleDeleteFir}
+                      variant="outlined"
+                      color="error"
+                      disabled={loading}
+                    >
+                      Delete
+                    </Button>
+                  )}
+                </>
+              )}
+              
+              <Button 
+                onClick={()=>{
+                  setDialogOpen(false);
+                  setEditMode(false);
+                }} 
+                variant="contained"
+              >
+                Close
+              </Button>
+            </>
+          )}
         </DialogActions>
       </Dialog>
 

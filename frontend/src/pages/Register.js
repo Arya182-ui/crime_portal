@@ -33,6 +33,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
   const getPasswordStrength = () => {
@@ -60,18 +61,71 @@ export default function Register() {
       return;
     }
     setLoading(true);
+    setError(null);
+    setSuccess(false);
     const auth = getAuth();
+    
     try {
+      // Step 1: Create Firebase user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const token = await userCredential.user.getIdToken();
-      await axios.post(
-        (process.env.REACT_APP_API_URL || 'http://localhost:8080') + '/api/auth/profile',
-        { name, email },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      navigate('/');
+      console.log('✅ User created successfully:', userCredential.user.uid);
+      
+      // Step 2: Get token
+      const token = await userCredential.user.getIdToken(true);
+      console.log('✅ Token obtained successfully');
+      
+      // Step 3: Create profile in backend (status will be PENDING)
+      try {
+        const apiBase = (process.env.REACT_APP_API_URL || 'http://localhost:8080') + '/api';
+        const response = await axios.post(
+          `${apiBase}/auth/profile`,
+          { name, email },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        console.log('✅ Profile created successfully:', response.data);
+      } catch (profileErr) {
+        console.error('⚠️ Profile creation error:', profileErr.response?.status, profileErr.response?.data);
+        console.log('ℹ️ Profile will be created automatically on first login');
+      }
+      
+      setSuccess(true);
+      setError(null);
+      
+      // Immediately logout after registration to prevent auto-login
+      await auth.signOut();
+      console.log('✅ Logged out after registration');
+      
+      // Clear form
+      setName('');
+      setEmail('');
+      setPassword('');
+      setConfirm('');
+      
+      // Navigate to login after showing success message
+      setTimeout(() => {
+        navigate('/login');
+      }, 3000);
     } catch (err) {
-      setError(err?.message || 'Registration failed');
+      console.error('❌ Registration error:', err);
+      let errorMessage = 'Registration failed';
+      
+      // Handle Firebase authentication errors
+      if (err.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered. Please login instead.';
+      } else if (err.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address format.';
+      } else if (err.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak. Use at least 6 characters.';
+      } else if (err.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (err.response?.status === 401) {
+        errorMessage = 'Authentication error. Please try logging in.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
+      setSuccess(false);
     } finally {
       setLoading(false);
     }
@@ -356,6 +410,7 @@ export default function Register() {
         </motion.div>
       </Container>
 
+      {/* Error Snackbar */}
       <Snackbar
         open={Boolean(error)}
         autoHideDuration={6000}
@@ -364,6 +419,18 @@ export default function Register() {
       >
         <Alert onClose={() => setError(null)} severity="error" variant="filled">
           {error}
+        </Alert>
+      </Snackbar>
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={success}
+        autoHideDuration={3000}
+        onClose={() => setSuccess(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setSuccess(false)} severity="success" variant="filled" icon={<CheckCircleIcon />}>
+          Account created successfully! Please wait for admin approval before logging in.
         </Alert>
       </Snackbar>
     </Box>

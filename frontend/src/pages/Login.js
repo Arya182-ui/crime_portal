@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -29,17 +29,41 @@ export default function Login() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { idToken } = useAuth();
+  const { user, logout } = useAuth();
+
+  // If user is already logged in, redirect to dashboard
+  useEffect(() => {
+    if (user) {
+      navigate('/', { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     const auth = getAuth();
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      navigate('/');
+      console.log('✅ Login successful');
+      // Navigate will be handled by useEffect checking user status
     } catch (err) {
-      setError(err?.message || 'Login failed');
+      console.error('❌ Login error:', err.code, err.message);
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+        errorMessage = 'Invalid email or password.';
+      } else if (err.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address format.';
+      } else if (err.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed login attempts. Please try again later.';
+      } else if (err.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (err.code === 'auth/user-disabled') {
+        errorMessage = 'This account has been disabled.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -236,6 +260,7 @@ export default function Login() {
         </motion.div>
       </Container>
 
+      {/* Error Snackbar */}
       <Snackbar
         open={Boolean(error)}
         autoHideDuration={6000}

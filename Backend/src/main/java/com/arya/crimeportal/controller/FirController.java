@@ -45,6 +45,8 @@ public class FirController {
 
     @PostMapping
     public ResponseEntity<?> createFir(@Valid @RequestBody CreateFirRequest req) throws ExecutionException, InterruptedException {
+        System.out.println("🔵 Creating FIR for complainant: " + req.complainantName());
+        
         // Generate FIR number
         String firNumber = "FIR" + System.currentTimeMillis();
         
@@ -60,7 +62,12 @@ public class FirController {
         data.put("createdAt", Instant.now().toString());
         data.put("updatedAt", Instant.now().toString());
 
+        System.out.println("🔵 FIR Data to save: " + data);
+        
         String id = firestoreService.createDocument(COLLECTION, data);
+        
+        System.out.println("✅ FIR created successfully! ID: " + id + ", FIR Number: " + firNumber);
+        
         return ResponseEntity.ok(Map.of(
             "firId", id, 
             "firNumber", firNumber,

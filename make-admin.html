@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Make Admin - Quick Tool</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .result.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .step {
+            background: #f8f9fa;
+            padding: 15px;
+            border-left: 4px solid #667eea;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Quick Admin Setup Tool</h1>
+        <p class="subtitle">Set admin role and approve user - arya119000@gmail.com</p>
+
+        <div class="step">
+            <strong>Step 1:</strong> Get Firebase ID Token (login as existing admin)
+        </div>
+
+        <div class="input-group">
+            <label>Backend API URL:</label>
+            <input type="text" id="apiUrl" value="https://your-railway-app.up.railway.app" placeholder="https://your-app.up.railway.app">
+        </div>
+
+        <div class="input-group">
+            <label>Firebase ID Token (from existing admin login):</label>
+            <textarea id="token" rows="4" placeholder="Paste Firebase ID token here..."></textarea>
+            <small style="color: #666;">Login to your app, open browser console, run: firebase.auth().currentUser.getIdToken().then(t => console.log(t))</small>
+        </div>
+
+        <div class="input-group">
+            <label>Email to make Admin:</label>
+            <input type="email" id="email" value="arya119000@gmail.com">
+        </div>
+
+        <button onclick="makeAdmin()" id="submitBtn">🚀 Make Admin & Approve</button>
+
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        async function makeAdmin() {
+            const apiUrl = document.getElementById('apiUrl').value.trim();
+            const token = document.getElementById('token').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const resultDiv = document.getElementById('result');
+            const btn = document.getElementById('submitBtn');
+
+            if (!apiUrl || !token || !email) {
+                showResult('error', 'Please fill all fields!');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Processing...';
+            resultDiv.style.display = 'none';
+
+            try {
+                // Step 1: Get user list to find UID
+                showResult('info', 'Step 1: Finding user by email...');
+                const usersResponse = await fetch(`${apiUrl}/api/auth/users`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!usersResponse.ok) {
+                    throw new Error(`Failed to fetch users: ${usersResponse.status}`);
+                }
+
+                const usersData = await usersResponse.json();
+                const user = usersData.users.find(u => u.email === email);
+
+                if (!user) {
+                    throw new Error(`User with email ${email} not found!`);
+                }
+
+                const uid = user.uid;
+                showResult('success', `✅ Found user: ${email} (UID: ${uid})`);
+
+                // Step 2: Set role to ADMIN
+                showResult('info', 'Step 2: Setting ADMIN role...');
+                const roleResponse = await fetch(`${apiUrl}/api/auth/set-role`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ uid: uid, role: 'ADMIN' })
+                });
+
+                if (!roleResponse.ok) {
+                    throw new Error(`Failed to set role: ${roleResponse.status}`);
+                }
+
+                const roleData = await roleResponse.json();
+                showResult('success', `✅ Role set: ${roleData.message}`);
+
+                // Step 3: Approve user
+                showResult('info', 'Step 3: Approving user...');
+                const approveResponse = await fetch(`${apiUrl}/api/auth/users/${uid}/approve`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!approveResponse.ok) {
+                    throw new Error(`Failed to approve user: ${approveResponse.status}`);
+                }
+
+                const approveData = await approveResponse.json();
+                showResult('success', `
+                    🎉 SUCCESS! User is now ADMIN and APPROVED!
+                    
+                    Email: ${email}
+                    UID: ${uid}
+                    Status: ${approveData.status}
+                    
+                    ⚠️ IMPORTANT: User must logout and login again to get new token with ADMIN role!
+                `);
+
+            } catch (error) {
+                showResult('error', `❌ Error: ${error.message}\n\nMake sure:\n1. Backend URL is correct\n2. You're logged in as ADMIN\n3. Token is valid\n4. User exists in Firebase`);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🚀 Make Admin & Approve';
+            }
+        }
+
+        function showResult(type, message) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = `result ${type}`;
+            resultDiv.innerHTML = `<pre>${message}</pre>`;
+            resultDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

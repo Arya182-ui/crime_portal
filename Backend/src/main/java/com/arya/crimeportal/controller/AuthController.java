@@ -39,6 +39,19 @@ public class AuthController {
             String photoURL = (String) body.getOrDefault("photoURL", "");
             String role = (String) body.getOrDefault("role", "OFFICER");
 
+            System.out.println("🔵 Creating/Updating profile for UID: " + uid);
+            System.out.println("🔵 Email: " + email + ", Name: " + name);
+
+            // Check if profile already exists
+            Map<String, Object> existingProfile = firestoreService.getDocument(COLLECTION, uid);
+            boolean isNewProfile = (existingProfile == null);
+            
+            if (isNewProfile) {
+                System.out.println("✅ New profile - creating...");
+            } else {
+                System.out.println("⚠️  Profile already exists - updating...");
+            }
+
             // Update Firebase Authentication user profile
             UserRecord.UpdateRequest request = new UserRecord.UpdateRequest(uid);
             
@@ -60,18 +73,28 @@ public class AuthController {
             data.put("email", email);
             data.put("photoURL", photoURL);
             data.put("role", role);
+            
+            if (isNewProfile) {
+                data.put("status", "PENDING"); // New users are PENDING by default
+                data.put("createdAt", Instant.now().toString());
+            }
             data.put("updatedAt", Instant.now().toString());
 
-            // Use uid as document id to keep it idempotent
-            firestoreService.updateDocument(COLLECTION, uid, data);
+            // Use uid as document id to keep it idempotent (prevents duplicates)
+            firestoreService.setDocument(COLLECTION, uid, data);
+            
+            System.out.println("✅ Profile saved successfully for UID: " + uid);
             
             return ResponseEntity.ok(Map.of(
-                "message", "Profile updated successfully",
+                "message", isNewProfile ? "Profile created successfully" : "Profile updated successfully",
                 "userId", uid,
-                "displayName", userRecord.getDisplayName(),
-                "photoURL", userRecord.getPhotoUrl()
+                "displayName", userRecord.getDisplayName() != null ? userRecord.getDisplayName() : "",
+                "photoURL", userRecord.getPhotoUrl() != null ? userRecord.getPhotoUrl() : "",
+                "isNewProfile", isNewProfile
             ));
         } catch (Exception e) {
+            System.err.println("❌ Error in createOrUpdateProfile: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of("error", "Failed to update profile: " + e.getMessage()));
         }
     }
@@ -152,6 +175,20 @@ public class AuthController {
                     // Get custom claims (role)
                     Map<String, Object> claims = user.getCustomClaims();
                     userMap.put("role", claims != null ? claims.get("role") : null);
+                    
+                    // Get status from Firestore
+                    try {
+                        Map<String, Object> firestoreData = firestoreService.getDocument(COLLECTION, user.getUid());
+                        if (firestoreData != null) {
+                            userMap.put("status", firestoreData.getOrDefault("status", "PENDING"));
+                            userMap.put("approvedAt", firestoreData.get("approvedAt"));
+                            userMap.put("approvedBy", firestoreData.get("approvedBy"));
+                        } else {
+                            userMap.put("status", "PENDING");
+                        }
+                    } catch (Exception e) {
+                        userMap.put("status", "PENDING");
+                    }
                     
                     usersList.add(userMap);
                 }
@@ -342,5 +379,95 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
         }
+    }
+
+    // Approve user (Admin only)
+    @PostMapping("/users/{uid}/approve")
+    public ResponseEntity<?> approveUser(@PathVariable String uid) {
+        try {
+            String currentRole = SecurityUtil.getRole();
+            if (!"ADMIN".equals(currentRole)) {
+                return ResponseEntity.status(403).body(Map.of("error", "Admin access required"));
+            }
+
+            String currentUid = SecurityUtil.getUid();
+            
+            // Update user status in Firestore
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("status", "APPROVED");
+            updates.put("approvedAt", Instant.now().toString());
+            updates.put("approvedBy", currentUid);
+            updates.put("updatedAt", Instant.now().toString());
+            
+            firestoreService.updateDocument(COLLECTION, uid, updates);
+            
+            System.out.println("✅ User approved: " + uid + " by " + currentUid);
+            
+            return ResponseEntity.ok(Map.of(
+                "message", "User approved successfully",
+                "uid", uid,
+                "status", "APPROVED"
+            ));
+        } catch (Exception e) {
+            System.err.println("❌ Error approving user: " + e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // Reject user (Admin only)
+    @PostMapping("/users/{uid}/reject")
+    public ResponseEntity<?> rejectUser(@PathVariable String uid) {
+        try {
+            String currentRole = SecurityUtil.getRole();
+            if (!"ADMIN".equals(currentRole)) {
+                return ResponseEntity.status(403).body(Map.of("error", "Admin access required"));
+            }
+
+            String currentUid = SecurityUtil.getUid();
+            
+            // Update user status in Firestore
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("status", "REJECTED");
+            updates.put("rejectedAt", Instant.now().toString());
+            updates.put("rejectedBy", currentUid);
+            updates.put("updatedAt", Instant.now().toString());
+            
+            firestoreService.updateDocument(COLLECTION, uid, updates);
+            
+            System.out.println("⚠️ User rejected: " + uid + " by " + currentUid);
+            
+            return ResponseEntity.ok(Map.of(
+                "message", "User rejected successfully",
+                "uid", uid,
+                "status", "REJECTED"
+            ));
+        } catch (Exception e) {
+            System.err.println("❌ Error rejecting user: " + e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // Get user profile with status check
+    @GetMapping("/profile/status")
+    public ResponseEntity<?> getProfileStatus() throws ExecutionException, InterruptedException {
+        String uid = SecurityUtil.getUid();
+        if (uid == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthenticated"));
+
+        Map<String, Object> profile = firestoreService.getDocument(COLLECTION, uid);
+        
+        if (profile == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "Profile not found"));
+        }
+
+        // If status field doesn't exist (legacy accounts), default to APPROVED
+        String status = (String) profile.getOrDefault("status", "APPROVED");
+        
+        System.out.println("✅ Profile status for " + uid + ": " + status);
+        
+        return ResponseEntity.ok(Map.of(
+            "userId", uid,
+            "status", status,
+            "profile", profile
+        ));
     }
 }

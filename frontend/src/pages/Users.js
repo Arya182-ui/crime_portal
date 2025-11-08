@@ -13,7 +13,10 @@ import {
   Person as PersonIcon,
   AdminPanelSettings as AdminIcon,
   Security as SecurityIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  CheckCircle as ApproveIcon,
+  Cancel as RejectIcon,
+  HourglassEmpty as PendingIcon
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
@@ -145,6 +148,44 @@ export default function Users() {
     }
   };
 
+  const handleApprove = async (uid, email) => {
+    if (!window.confirm(`Approve user: ${email}?`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const api = createApiClient(idToken);
+      await api.post(`/auth/users/${uid}/approve`);
+      setMessage({ type: 'success', text: 'User approved successfully!' });
+      loadUsers();
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error) {
+      setMessage({ type: 'error', text: error.response?.data?.error || 'Failed to approve user' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReject = async (uid, email) => {
+    if (!window.confirm(`Reject user: ${email}? They will not be able to login.`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const api = createApiClient(idToken);
+      await api.post(`/auth/users/${uid}/reject`);
+      setMessage({ type: 'success', text: 'User rejected successfully!' });
+      loadUsers();
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error) {
+      setMessage({ type: 'error', text: error.response?.data?.error || 'Failed to reject user' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getRoleBadge = (role) => {
     const roleConfig = {
       ADMIN: { color: 'error', icon: <AdminIcon /> },
@@ -153,6 +194,16 @@ export default function Users() {
     };
     const config = roleConfig[role] || roleConfig.USER;
     return <Chip label={role || 'No Role'} color={config.color} size="small" icon={config.icon} />;
+  };
+
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      PENDING: { color: 'warning', icon: <PendingIcon />, label: 'Pending' },
+      APPROVED: { color: 'success', icon: <ApproveIcon />, label: 'Approved' },
+      REJECTED: { color: 'error', icon: <RejectIcon />, label: 'Rejected' }
+    };
+    const config = statusConfig[status] || statusConfig.PENDING;
+    return <Chip label={config.label} color={config.color} size="small" icon={config.icon} />;
   };
 
   if (userRole !== 'ADMIN') {
@@ -270,11 +321,7 @@ export default function Users() {
                     </TableCell>
                     <TableCell>{getRoleBadge(user.role)}</TableCell>
                     <TableCell>
-                      {user.disabled ? (
-                        <Chip label="Disabled" size="small" color="error" />
-                      ) : (
-                        <Chip label="Active" size="small" color="success" />
-                      )}
+                      {getStatusBadge(user.status || 'PENDING')}
                     </TableCell>
                     <TableCell>
                       <Typography variant="caption">
@@ -284,6 +331,43 @@ export default function Users() {
                       </Typography>
                     </TableCell>
                     <TableCell align="right">
+                      {/* Approve/Reject buttons for PENDING users */}
+                      {user.status === 'PENDING' && (
+                        <>
+                          <Tooltip title="Approve User">
+                            <IconButton
+                              size="small"
+                              color="success"
+                              onClick={() => handleApprove(user.uid, user.email)}
+                            >
+                              <ApproveIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Reject User">
+                            <IconButton
+                              size="small"
+                              color="warning"
+                              onClick={() => handleReject(user.uid, user.email)}
+                            >
+                              <RejectIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </>
+                      )}
+                      
+                      {/* Re-approve button for REJECTED users */}
+                      {user.status === 'REJECTED' && (
+                        <Tooltip title="Re-approve User">
+                          <IconButton
+                            size="small"
+                            color="success"
+                            onClick={() => handleApprove(user.uid, user.email)}
+                          >
+                            <ApproveIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      
                       <Tooltip title="Edit User">
                         <IconButton
                           size="small"

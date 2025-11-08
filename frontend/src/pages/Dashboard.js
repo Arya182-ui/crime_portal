@@ -187,9 +187,13 @@ export default function Dashboard(){
         api.get('/dashboard/stats'),
         api.get('/dashboard/charts/monthly'),
         api.get('/dashboard/top-locations'),
-        api.get('/crimes'),
-        api.get('/firs/search')
+        api.get('/crimes', { params: { limit: 100 } }),
+        api.get('/firs', { params: { limit: 100 } })
       ]);
+      
+      console.log('Dashboard stats:', dashStatsResp.data);
+      console.log('FIRs data:', firsResp.data);
+      
       setStats(dashStatsResp.data || {});
       setMonthlyData(chartsResp.data || []);
       setTopLocations(locationsResp.data || []);
@@ -206,8 +210,17 @@ export default function Dashboard(){
   useEffect(()=>{ 
     if (!authLoading && idToken) {
       load();
+      
+      // Auto-refresh every 30 seconds for admin/officers
+      if (userRole === 'ADMIN' || userRole === 'OFFICER') {
+        const interval = setInterval(() => {
+          load();
+        }, 30000); // 30 seconds
+        
+        return () => clearInterval(interval);
+      }
     }
-  }, [idToken, authLoading]);
+  }, [idToken, authLoading, userRole]);
 
   // Prepare chart data from monthly API
   const chartData = monthlyData.map(item => ({
@@ -222,11 +235,6 @@ export default function Dashboard(){
   const crimesTrend = recentData.map(d => ({ value: d.crimes }));
   const firsTrend = recentData.map(d => ({ value: d.firs }));
   const criminalsTrend = recentData.map(d => ({ value: d.criminals }));
-
-  // Calculate deltas from stats breakdowns
-  const crimesDelta = stats?.crimesBreakdown?.percentageChange || null;
-  const firsDelta = stats?.firsBreakdown?.percentageChange || null;
-  const criminalsDelta = stats?.criminalsBreakdown?.percentageChange || null;
 
   // Prepare merged activities
   const activities = [];
@@ -321,7 +329,7 @@ export default function Dashboard(){
             value={loading ? '—' : stats?.totalCrimes ?? 0} 
             icon={<GavelIcon sx={{ fontSize: 28 }} />} 
             color="primary" 
-            delta={crimesDelta}
+            delta={stats?.deltas?.crimes ?? null}
             trend={crimesTrend}
           />
         </Grid>
@@ -329,21 +337,21 @@ export default function Dashboard(){
         <Grid item xs={12} sm={6} md={4}>
           <StatCard 
             title="Total FIRs" 
-            value={loading ? '—' : stats?.totalFirs ?? 0} 
+            value={loading ? '—' : stats?.openFirs ?? 0} 
             icon={<ReportIcon sx={{ fontSize: 28 }} />} 
             color="secondary" 
-            delta={firsDelta}
+            delta={stats?.deltas?.firs ?? null}
             trend={firsTrend}
           />
         </Grid>
 
         <Grid item xs={12} sm={6} md={4}>
           <StatCard 
-            title="Total Criminals" 
-            value={loading ? '—' : stats?.totalCriminals ?? 0} 
+            title="Known Criminals" 
+            value={loading ? '—' : stats?.knownCriminals ?? 0} 
             icon={<PeopleIcon sx={{ fontSize: 28 }} />} 
             color="success" 
-            delta={criminalsDelta}
+            delta={stats?.deltas?.criminals ?? null}
             trend={criminalsTrend}
           />
         </Grid>

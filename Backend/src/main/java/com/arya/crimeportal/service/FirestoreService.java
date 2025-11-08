@@ -23,9 +23,18 @@ public class FirestoreService {
     }
 
     public String createDocument(String collection, Map<String, Object> data) throws ExecutionException, InterruptedException {
+        System.out.println("🔵 FirestoreService.createDocument - Collection: " + collection);
+        System.out.println("🔵 Firestore DB instance: " + (db != null ? "Initialized ✅" : "NULL ❌"));
+        
         DocumentReference docRef = db.collection(collection).document();
+        System.out.println("🔵 Document reference created: " + docRef.getId());
+        
         ApiFuture<WriteResult> future = docRef.set(data);
-        future.get();
+        WriteResult result = future.get();
+        
+        System.out.println("✅ Document saved to Firebase! Write time: " + result.getUpdateTime());
+        System.out.println("✅ Document ID: " + docRef.getId());
+        
         return docRef.getId();
     }
 

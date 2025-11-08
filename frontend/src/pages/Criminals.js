@@ -430,7 +430,7 @@ export default function Criminals(){
                     {item.address && (
                       <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'action.hover' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                          <LocationIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                          <LocationOnIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
                           <Typography variant="caption" color="text.secondary" fontWeight={600}>
                             Address
                           </Typography>
@@ -460,7 +460,7 @@ export default function Criminals(){
                     {item.lastSeenLocation && (
                       <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'warning.light', color: 'warning.dark' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                          <LocationIcon sx={{ fontSize: 18 }} />
+                          <LocationOnIcon sx={{ fontSize: 18 }} />
                           <Typography variant="caption" fontWeight={600}>
                             Last Seen
                           </Typography>
