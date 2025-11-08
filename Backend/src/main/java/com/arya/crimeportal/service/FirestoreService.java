@@ -3,16 +3,24 @@ package com.arya.crimeportal.service;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 @Service
+@DependsOn("firebaseConfig")
 public class FirestoreService {
 
-    private final Firestore db = FirestoreClient.getFirestore();
+    private Firestore db;
+    
+    @PostConstruct
+    public void init() {
+        this.db = FirestoreClient.getFirestore();
+    }
 
     public String createDocument(String collection, Map<String, Object> data) throws ExecutionException, InterruptedException {
         DocumentReference docRef = db.collection(collection).document();
