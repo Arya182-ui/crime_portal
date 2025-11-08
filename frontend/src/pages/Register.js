@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import axios from 'axios';
 import Container from '@mui/material/Container';
@@ -33,6 +33,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
   const getPasswordStrength = () => {
@@ -60,18 +61,46 @@ export default function Register() {
       return;
     }
     setLoading(true);
+    setError(null);
+    setSuccess(false);
     const auth = getAuth();
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Send email verification
+      await sendEmailVerification(userCredential.user);
+      
       const token = await userCredential.user.getIdToken();
       await axios.post(
         (process.env.REACT_APP_API_URL || 'http://localhost:8080') + '/api/auth/profile',
         { name, email },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      navigate('/');
+      setSuccess(true);
+      setError(null);
+      // Navigate to login after showing success message
+      setTimeout(() => {
+        navigate('/login');
+      }, 3000);
     } catch (err) {
-      setError(err?.message || 'Registration failed');
+      console.error('Registration error:', err);
+      let errorMessage = 'Registration failed';
+      
+      // Handle Firebase authentication errors
+      if (err.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered. Please login instead.';
+      } else if (err.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address format.';
+      } else if (err.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak. Use at least 6 characters.';
+      } else if (err.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
+      setSuccess(false);
     } finally {
       setLoading(false);
     }
@@ -356,6 +385,7 @@ export default function Register() {
         </motion.div>
       </Container>
 
+      {/* Error Snackbar */}
       <Snackbar
         open={Boolean(error)}
         autoHideDuration={6000}
@@ -364,6 +394,18 @@ export default function Register() {
       >
         <Alert onClose={() => setError(null)} severity="error" variant="filled">
           {error}
+        </Alert>
+      </Snackbar>
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={success}
+        autoHideDuration={3000}
+        onClose={() => setSuccess(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setSuccess(false)} severity="success" variant="filled" icon={<CheckCircleIcon />}>
+          Account created successfully! Please check your email to verify your account before logging in.
         </Alert>
       </Snackbar>
     </Box>
