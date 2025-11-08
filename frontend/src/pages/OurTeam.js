@@ -94,6 +94,7 @@ const mentor = {
   name: 'Chetan Dhakad',
   role: 'Project Mentor & Guide',
   avatar: 'CD',
+  avatarImage: 'https://ibb.co/LdPhdRC2', // Use direct image link
   color: '#6a1b9a',
   icon: <PsychologyIcon />,
   skills: ['Project Guidance', 'Technical Mentorship', 'Code Review', 'Best Practices'],
@@ -327,6 +328,8 @@ const OurTeam = () => {
                   {/* Avatar */}
                   <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
                     <Avatar
+                      src={mentor.avatarImage}
+                      alt={mentor.name}
                       sx={{
                         width: 100,
                         height: 100,
