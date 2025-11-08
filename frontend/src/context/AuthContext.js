@@ -35,17 +35,18 @@ export function AuthProvider({ children }) {
           const tokenResult = await u.getIdTokenResult();
           setUserRole(tokenResult.claims.role || null);
           
-          // Check profile status
+          // Check profile status using /me endpoint (returns role, status, name, email)
           try {
             const apiBase = (process.env.REACT_APP_API_URL || 'http://localhost:8080') + '/api';
-            const statusResponse = await axios.get(
-              `${apiBase}/auth/profile/status`,
+            const meResponse = await axios.get(
+              `${apiBase}/auth/me`,
               { headers: { Authorization: `Bearer ${token}` } }
             );
             
-            const status = statusResponse.data.status;
+            const { status, role } = meResponse.data;
             setUserStatus(status);
-            console.log('✅ Profile status:', status);
+            setUserRole(role || tokenResult.claims.role || null); // Prefer backend role
+            console.log('✅ Profile info from /me:', meResponse.data);
             
             // If status is PENDING or REJECTED, set appropriate message
             if (status === 'PENDING') {
@@ -58,7 +59,7 @@ export function AuthProvider({ children }) {
             }
             
           } catch (profileErr) {
-            console.error('⚠️ Profile status check failed:', profileErr.response?.status);
+            console.error('⚠️ Profile check failed:', profileErr.response?.status);
             
             // If profile doesn't exist (401 or 404), try to create it
             if (profileErr.response?.status === 401 || profileErr.response?.status === 404) {
