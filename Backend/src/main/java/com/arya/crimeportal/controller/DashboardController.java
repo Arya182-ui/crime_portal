@@ -105,10 +105,18 @@ public class DashboardController {
     @GetMapping("/charts/monthly")
     public ResponseEntity<?> getMonthlyChartData() throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
-        ApiFuture<QuerySnapshot> future = db.collection("crimes").get();
-        List<QueryDocumentSnapshot> docs = future.get().getDocuments();
+        
+        // Fetch all collections in parallel
+        ApiFuture<QuerySnapshot> crimesFuture = db.collection("crimes").get();
+        ApiFuture<QuerySnapshot> firsFuture = db.collection("firs").get();
+        ApiFuture<QuerySnapshot> criminalsFuture = db.collection("criminals").get();
 
-        List<Map<String, Object>> monthlyData = calculateMonthlyData(docs, 6); // Last 6 months
+        List<QueryDocumentSnapshot> crimesDocs = crimesFuture.get().getDocuments();
+        List<QueryDocumentSnapshot> firsDocs = firsFuture.get().getDocuments();
+        List<QueryDocumentSnapshot> criminalsDocs = criminalsFuture.get().getDocuments();
+
+        // Calculate monthly trends for each collection
+        List<Map<String, Object>> monthlyData = calculateMonthlyTrends(crimesDocs, firsDocs, criminalsDocs, 6);
         return ResponseEntity.ok(monthlyData);
     }
 
@@ -278,6 +286,85 @@ public class DashboardController {
         }
 
         return data;
+    }
+
+    private List<Map<String, Object>> calculateMonthlyTrends(List<QueryDocumentSnapshot> crimesDocs, 
+                                                              List<QueryDocumentSnapshot> firsDocs,
+                                                              List<QueryDocumentSnapshot> criminalsDocs,
+                                                              int months) {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM")
+                .withZone(ZoneId.systemDefault());
+        Instant now = Instant.now();
+
+        // Initialize month map with all months in the range
+        Map<String, Map<String, Integer>> monthlyData = new LinkedHashMap<>();
+        for (int i = months - 1; i >= 0; i--) {
+            Instant month = now.minusSeconds(30L * 86400L * i);
+            String monthKey = fmt.format(month);
+            Map<String, Integer> counts = new HashMap<>();
+            counts.put("crimes", 0);
+            counts.put("firs", 0);
+            counts.put("criminals", 0);
+            monthlyData.put(monthKey, counts);
+        }
+
+        // Count crimes per month
+        for (QueryDocumentSnapshot doc : crimesDocs) {
+            Object dateObj = doc.get("createdAt");
+            if (dateObj != null) {
+                try {
+                    Instant date = Instant.parse(dateObj.toString());
+                    String monthKey = fmt.format(date);
+                    if (monthlyData.containsKey(monthKey)) {
+                        monthlyData.get(monthKey).put("crimes", 
+                            monthlyData.get(monthKey).get("crimes") + 1);
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+
+        // Count FIRs per month
+        for (QueryDocumentSnapshot doc : firsDocs) {
+            Object dateObj = doc.get("createdAt");
+            if (dateObj != null) {
+                try {
+                    Instant date = Instant.parse(dateObj.toString());
+                    String monthKey = fmt.format(date);
+                    if (monthlyData.containsKey(monthKey)) {
+                        monthlyData.get(monthKey).put("firs", 
+                            monthlyData.get(monthKey).get("firs") + 1);
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+
+        // Count criminals per month
+        for (QueryDocumentSnapshot doc : criminalsDocs) {
+            Object dateObj = doc.get("createdAt");
+            if (dateObj != null) {
+                try {
+                    Instant date = Instant.parse(dateObj.toString());
+                    String monthKey = fmt.format(date);
+                    if (monthlyData.containsKey(monthKey)) {
+                        monthlyData.get(monthKey).put("criminals", 
+                            monthlyData.get(monthKey).get("criminals") + 1);
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+
+        // Convert to list format
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<String, Map<String, Integer>> entry : monthlyData.entrySet()) {
+            Map<String, Object> point = new HashMap<>();
+            point.put("month", entry.getKey());
+            point.put("crimes", entry.getValue().get("crimes"));
+            point.put("firs", entry.getValue().get("firs"));
+            point.put("criminals", entry.getValue().get("criminals"));
+            result.add(point);
+        }
+
+        return result;
     }
 
     private Map<String, Integer> calculateStatusBreakdown(List<QueryDocumentSnapshot> docs) {
