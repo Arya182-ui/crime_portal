@@ -1,5 +1,5 @@
 # Crime Record Management Portal
-# Crime Portal — Full Project
+# Crime Portal — Full Project (College 5th sem)
 
 This repository contains the Crime Portal full-stack application: a modern platform for filing and managing crime
 reports, FIRs and criminal records. The repo contains two main parts:
