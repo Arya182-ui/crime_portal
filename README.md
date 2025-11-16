@@ -549,26 +549,6 @@ Solution:
 
 ---
 
-## 📧 Contact
-
-<div align="center">
-
-### Get in Touch
-
-**Email**: arya119000@gmail.com
-
-**GitHub**: [@Arya182-ui](https://github.com/Arya182-ui)
-
-**Project Repository**: [crime_portal](https://github.com/Arya182-ui/crime_portal)
-
----
-
-*For bug reports and feature requests, please use the [GitHub Issues](https://github.com/Arya182-ui/crime_portal/issues) page.*
-
-</div>
-
----
-
 ## 📄 License
 
 This project is created as a college project for educational purposes. 
@@ -588,12 +568,20 @@ This project is created as a college project for educational purposes.
 
 ---
 
+## 📧 Contact
+
 <div align="center">
 
+### Get in Touch
+
+**Email**: arya119000@gmail.com
+
+**GitHub**: [@Arya182-ui](https://github.com/Arya182-ui)
+
+**Project Repository**: [crime_portal](https://github.com/Arya182-ui/crime_portal)
+
+---
 ### ⭐ Star this repository if you find it helpful!
-
-Made with ❤️ by the Crime Portal Team
-
-**College Project | 2025**
+*For bug reports and feature requests, please use the [GitHub Issues](https://github.com/Arya182-ui/crime_portal/issues) page.*
 
 </div>
