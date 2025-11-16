@@ -1,11 +1,43 @@
-# Crime Record Management Portal
-# Crime Portal — Full Project (College 5th sem)
+# 🚔 Crime Record Management Portal
 
-This repository contains the Crime Portal full-stack application: a modern platform for filing and managing crime
-reports, FIRs and criminal records. The repo contains two main parts:
+<div align="center">
 
-- `Backend/` — Spring Boot REST API (authentication via Firebase Admin SDK)
-- `frontend/` — React application (MUI, Framer Motion, Recharts) using Firebase Authentication
+![Java](https://img.shields.io/badge/Java-17+-orange?style=for-the-badge&logo=java)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen?style=for-the-badge&logo=spring)
+![React](https://img.shields.io/badge/React-18-blue?style=for-the-badge&logo=react)
+![Firebase](https://img.shields.io/badge/Firebase-Authentication-yellow?style=for-the-badge&logo=firebase)
+![MySQL](https://img.shields.io/badge/MySQL-Database-blue?style=for-the-badge&logo=mysql)
+
+**A Modern Full-Stack Crime Management System**
+
+*College Project | B.Tech Computer Science*
+
+[📖 Documentation](#table-of-contents) • [🚀 Quick Start](#quick-start-development) • [👥 Team](#team-members) • [📧 Contact](#contact)
+
+</div>
+
+---
+
+## 📋 Overview
+
+Crime Portal is a comprehensive full-stack web application designed to modernize the process of filing and managing crime reports, FIRs (First Information Reports), and criminal records. Built as a college project, this platform demonstrates the integration of modern web technologies to create a secure, role-based crime management system.
+
+### 🎯 Key Features
+
+- 🔐 **Secure Authentication** - Firebase Authentication with JWT verification
+- 👥 **Role-Based Access Control** - ADMIN, OFFICER, and USER roles with granular permissions
+- 📝 **FIR Management** - Complete lifecycle management of First Information Reports
+- 🔍 **Criminal Records** - Comprehensive criminal database with search functionality
+- 📊 **Analytics Dashboard** - Interactive charts and statistics for crime data analysis
+- 📱 **Responsive Design** - Modern UI that works seamlessly across devices
+- 🔔 **Activity Logging** - Comprehensive audit trail of system activities
+
+### 🏗️ Project Structure
+
+This repository contains two main components:
+
+- **`Backend/`** — Spring Boot REST API with Firebase Admin SDK for authentication
+- **`frontend/`** — React SPA with Material-UI, Framer Motion, and Recharts
 
 ---
 
@@ -40,44 +72,115 @@ Key features:
 
 ---
 
-## Architecture
+## 🏛️ Architecture
 
-- Frontend: React (v18), Material UI (v5), Framer Motion, Recharts
-- Backend: Spring Boot, JPA/Hibernate, Firebase Admin SDK (JWT verification)
-- Database: MySQL (or PostgreSQL) for primary data store
-- Authentication: Firebase Auth for user sign-in and token issuance
+### Technology Stack
+
+#### Frontend
+- **Framework**: React 18
+- **UI Library**: Material-UI (MUI) v5
+- **Animation**: Framer Motion
+- **Charts**: Recharts
+- **HTTP Client**: Axios
+- **Routing**: React Router v6
+- **State Management**: React Context API
+
+#### Backend
+- **Framework**: Spring Boot 3.x
+- **Language**: Java 17+
+- **ORM**: JPA/Hibernate
+- **Security**: Spring Security + Firebase Admin SDK
+- **Build Tool**: Maven
+- **API Style**: RESTful
+
+#### Database & Authentication
+- **Database**: MySQL (PostgreSQL compatible)
+- **Authentication**: Firebase Authentication
+- **Authorization**: JWT token-based with role verification
+
+### System Architecture
+
+```
+┌─────────────┐      ┌──────────────┐      ┌─────────────┐
+│   React     │ HTTP │ Spring Boot  │ JDBC │   MySQL     │
+│  Frontend   │◄────►│   Backend    │◄────►│  Database   │
+│             │      │   REST API   │      │             │
+└─────────────┘      └──────────────┘      └─────────────┘
+       │                    │
+       │                    │
+       └────────┬───────────┘
+                │
+                ▼
+         ┌─────────────┐
+         │  Firebase   │
+         │    Auth     │
+         └─────────────┘
+```
 
 ---
 
-## Quick start (development)
+## 🚀 Quick Start (Development)
 
-Prerequisites:
+### Prerequisites
 
-- Java 17+
-- Maven or Gradle (wrapper recommended)
-- Node.js 16+
-- MySQL or PostgreSQL
-- Firebase project (for Auth)
+Ensure you have the following installed:
 
-1. Clone the repository and open a terminal (PowerShell):
+| Tool | Version | Purpose |
+|------|---------|---------|
+| ☕ Java JDK | 17+ | Backend runtime |
+| 📦 Maven | 3.6+ | Backend build tool |
+| 🟢 Node.js | 16+ | Frontend runtime |
+| 🗄️ MySQL | 8.0+ | Database |
+| 🔥 Firebase Project | - | Authentication |
+
+### 🔧 Installation Steps
+
+#### 1️⃣ Clone the Repository
 
 ```powershell
-git clone <your-repo-url>
-cd "Java Project"
+git clone https://github.com/Arya182-ui/crime_portal.git
+cd crime_portal
 ```
 
-2. Prepare the database (example with MySQL):
+#### 2️⃣ Database Setup
+
+Create the database:
 
 ```powershell
-# create database
-mysql -u root -p -e "CREATE DATABASE crimeportal CHARACTER SET utf8mb4;"
+# MySQL
+mysql -u root -p -e "CREATE DATABASE crimeportal CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 ```
 
-3. Configure environment variables for backend and frontend (see sections below).
+#### 3️⃣ Backend Configuration
 
-4. Start Backend and Frontend in separate terminals:
+Create `Backend/src/main/resources/application.properties`:
 
-Backend (PowerShell):
+```properties
+spring.datasource.url=jdbc:mysql://localhost:3306/crimeportal
+spring.datasource.username=your_username
+spring.datasource.password=your_password
+spring.jpa.hibernate.ddl-auto=update
+```
+
+Add your Firebase service account JSON file to `Backend/` directory.
+
+#### 4️⃣ Frontend Configuration
+
+Create `frontend/.env`:
+
+```env
+REACT_APP_API_BASE_URL=http://localhost:8080
+REACT_APP_FIREBASE_API_KEY=your_api_key
+REACT_APP_FIREBASE_AUTH_DOMAIN=your_auth_domain
+REACT_APP_FIREBASE_PROJECT_ID=your_project_id
+REACT_APP_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+REACT_APP_FIREBASE_APP_ID=your_app_id
+```
+
+#### 5️⃣ Start the Application
+
+**Terminal 1 - Backend:**
 
 ```powershell
 cd Backend
@@ -85,116 +188,412 @@ mvn clean install
 mvn spring-boot:run
 ```
 
-Frontend (PowerShell):
+Backend will run on `http://localhost:8080`
+
+**Terminal 2 - Frontend:**
 
 ```powershell
 cd frontend
 npm install
-npm run start
+npm start
 ```
 
-Open `http://localhost:3000` for the frontend and `http://localhost:8080` for backend APIs.
+Frontend will run on `http://localhost:3000`
+
+#### 6️⃣ Access the Application
+
+- **Frontend**: [http://localhost:3000](http://localhost:3000)
+- **Backend API**: [http://localhost:8080](http://localhost:8080)
+- **API Documentation**: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) (if configured)
 
 ---
 
-## Environment variables summary
+## 🔐 Environment Variables
 
-Backend (store securely on server / local dev env):
+### Backend Configuration
 
-- `SPRING_DATASOURCE_URL` — e.g. `jdbc:mysql://localhost:3306/crimeportal`
-- `SPRING_DATASOURCE_USERNAME`
-- `SPRING_DATASOURCE_PASSWORD`
-- `JWT_SECRET` — internal JWT secret (if used)
-- `FIREBASE_SERVICE_ACCOUNT` — path to Firebase service account JSON
-- `SERVER_PORT` — e.g., `8080`
+Create these environment variables or add to `application.properties`:
 
-Frontend (put in `frontend/.env` or environment for hosting):
+| Variable | Example | Description |
+|----------|---------|-------------|
+| `SPRING_DATASOURCE_URL` | `jdbc:mysql://localhost:3306/crimeportal` | Database connection URL |
+| `SPRING_DATASOURCE_USERNAME` | `root` | Database username |
+| `SPRING_DATASOURCE_PASSWORD` | `password123` | Database password |
+| `JWT_SECRET` | `your-secret-key` | Internal JWT secret |
+| `FIREBASE_SERVICE_ACCOUNT` | `/path/to/serviceAccount.json` | Firebase Admin SDK credentials |
+| `SERVER_PORT` | `8080` | Backend server port |
 
-- `REACT_APP_API_BASE_URL` — e.g. `http://localhost:8080`
-- `REACT_APP_FIREBASE_API_KEY`
-- `REACT_APP_FIREBASE_AUTH_DOMAIN`
-- `REACT_APP_FIREBASE_PROJECT_ID`
-- `REACT_APP_FIREBASE_STORAGE_BUCKET`
-- `REACT_APP_FIREBASE_MESSAGING_SENDER_ID`
-- `REACT_APP_FIREBASE_APP_ID`
+### Frontend Configuration
 
----
+Create `frontend/.env` with these variables:
 
-## Running Backend
+| Variable | Example | Description |
+|----------|---------|-------------|
+| `REACT_APP_API_BASE_URL` | `http://localhost:8080` | Backend API base URL |
+| `REACT_APP_FIREBASE_API_KEY` | `AIza...` | Firebase API key |
+| `REACT_APP_FIREBASE_AUTH_DOMAIN` | `project.firebaseapp.com` | Firebase auth domain |
+| `REACT_APP_FIREBASE_PROJECT_ID` | `your-project-id` | Firebase project ID |
+| `REACT_APP_FIREBASE_STORAGE_BUCKET` | `project.appspot.com` | Firebase storage bucket |
+| `REACT_APP_FIREBASE_MESSAGING_SENDER_ID` | `123456789` | Firebase messaging sender ID |
+| `REACT_APP_FIREBASE_APP_ID` | `1:123:web:abc` | Firebase app ID |
 
-See `Backend/README.md` for details about building, running, testing, database migrations and Firebase Admin configuration.
-
----
-
-## Running Frontend
-
-See `frontend/README.md` for quick start and deployment instructions.
+> ⚠️ **Security Note**: Never commit `.env` files or credentials to version control. Use `.gitignore` to exclude them.
 
 ---
 
-## Running both together (recommended)
+## 📁 Project Structure
 
-1. Start DB and ensure the backend `SPRING_DATASOURCE_URL` points to it.
-2. Start the backend server and confirm health (e.g., `GET /actuator/health` or base root).
-3. Start the frontend with `REACT_APP_API_BASE_URL` set to backend URL.
+### Backend (`Backend/`)
 
-Optional: use Docker Compose to orchestrate DB + backend + (optional) reverse proxy. Tell me if you want a `docker-compose.yml` scaffold.
+```
+Backend/
+├── src/main/java/com/arya/crimeportal/
+│   ├── Application.java              # Main Spring Boot application
+│   ├── config/                       # Configuration classes
+│   │   ├── CorsConfig.java
+│   │   ├── FirebaseConfig.java
+│   │   └── SecurityConfig.java
+│   ├── controller/                   # REST API endpoints
+│   │   ├── AuthController.java
+│   │   ├── CrimeController.java
+│   │   ├── FirController.java
+│   │   └── ...
+│   ├── model/                        # JPA entities
+│   ├── service/                      # Business logic
+│   ├── security/                     # Security filters & JWT
+│   └── util/                         # Utility classes
+├── src/main/resources/
+│   └── application.properties        # App configuration
+└── pom.xml                           # Maven dependencies
+```
+
+### Frontend (`frontend/`)
+
+```
+frontend/
+├── src/
+│   ├── components/                   # Reusable components
+│   │   ├── Header.js
+│   │   ├── Footer.js
+│   │   └── ProtectedRoute.js
+│   ├── pages/                        # Page components
+│   │   ├── Dashboard.js
+│   │   ├── Login.js
+│   │   ├── Crimes.js
+│   │   └── ...
+│   ├── services/                     # API service layer
+│   │   └── api.js
+│   ├── context/                      # React context
+│   │   └── AuthContext.js
+│   ├── App.js                        # Main app component
+│   └── index.js                      # Entry point
+├── public/
+└── package.json                      # NPM dependencies
+```
+
+## 🔗 API Endpoints
+
+See `Backend/API_ENDPOINTS.md` for complete API documentation.
+
+### Key Endpoints
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/api/auth/login` | User login | ❌ |
+| POST | `/api/auth/register` | User registration | ❌ |
+| GET | `/api/crimes` | Get all crimes | ✅ |
+| POST | `/api/crimes` | Create new crime | ✅ OFFICER |
+| GET | `/api/firs` | Get all FIRs | ✅ |
+| POST | `/api/firs` | File new FIR | ✅ |
+| GET | `/api/dashboard/stats` | Get statistics | ✅ |
+
+## 🧪 Testing
+
+### Backend Tests
+
+```powershell
+cd Backend
+mvn test
+```
+
+### Frontend Tests
+
+```powershell
+cd frontend
+npm test
+```
+
+## 📦 Building for Production
+
+### Backend
+
+```powershell
+cd Backend
+mvn clean package -DskipTests
+# Output: target/crimeportal.jar
+```
+
+### Frontend
+
+```powershell
+cd frontend
+npm run build
+# Output: build/ directory
+```
 
 ---
 
-## Database & Firebase setup
+## 🔥 Firebase Setup
 
-- Create the database and user. Run migrations (Flyway/Liquibase) if the project uses them.
-- For Firebase: create a Firebase project, enable Email/Password sign-in (or providers you need), and create a Service Account. Provide the service account JSON to the backend and the client-side config to the frontend via env vars.
+### Step 1: Create Firebase Project
 
----
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Click "Add Project" and follow the wizard
+3. Enable Google Analytics (optional)
 
-## Deployment notes
+### Step 2: Enable Authentication
 
-- Backend: build a production JAR (`mvn package -DskipTests`) and deploy on a JVM host, container, or PaaS (Heroku/Railway/AWS ECS). Use environment variables for secrets.
-- Frontend: `npm run build` and host static files on Netlify, Vercel, S3+CloudFront, or any static host.
-- Use HTTPS in production and add CORS policy on the backend to allow your frontend origin.
+1. Navigate to **Authentication** → **Sign-in method**
+2. Enable **Email/Password** authentication
+3. (Optional) Enable other providers as needed
 
----
+### Step 3: Get Configuration
 
-## Team Members
+**For Frontend:**
+1. Go to **Project Settings** → **General**
+2. Scroll to "Your apps" and click the web icon `</>`
+3. Copy the configuration object to `frontend/.env`
 
-This is a college project developed by:
+**For Backend:**
+1. Go to **Project Settings** → **Service Accounts**
+2. Click "Generate new private key"
+3. Save the JSON file as `serviceAccount.json` in `Backend/` directory
 
-1. **Ayush Gangwar** - Project Lead & Full Stack Developer
-2. **Pratham Kumar** - Assistant Lead & Backend Developer
-3. **Jatin Sharma** - Frontend Developer
-4. **Neha Gangwar** - UI/UX Designer & Frontend Developer
-5. **Pallavi Gangwar** - Database Administrator
-6. **Aditya Raj** - Testing & Quality Assurance
-7. **Sanjeev Maurya** - Documentation & API Testing
+### Step 4: Security Rules
 
----
-
-## Contributing
-
-- Use feature branches and descriptive commit messages.
-- Run tests locally and include small focused PRs.
-- Update README sections if you change deploy or env requirements.
+Set appropriate Firestore/Storage security rules in the Firebase Console.
 
 ---
 
-## Troubleshooting
+## 🚀 Deployment
 
-- Backend DB errors: check DB URL, credentials, and that DB accepts connections.
-- Firebase auth fails: ensure service account JSON and client-side config match the same Firebase project.
-- CORS issues: configure backend CORS to accept frontend origin.
+### Backend Deployment Options
+
+#### Option 1: Heroku
+```powershell
+# Install Heroku CLI and login
+heroku create your-app-name
+heroku addons:create cleardb:ignite  # MySQL
+git push heroku main
+```
+
+#### Option 2: Railway
+1. Connect GitHub repository
+2. Add MySQL database
+3. Set environment variables
+4. Deploy automatically on push
+
+#### Option 3: Docker
+```dockerfile
+# Dockerfile example
+FROM openjdk:17-slim
+COPY target/crimeportal.jar app.jar
+ENTRYPOINT ["java","-jar","/app.jar"]
+```
+
+### Frontend Deployment Options
+
+#### Option 1: Vercel
+```powershell
+cd frontend
+npm install -g vercel
+vercel --prod
+```
+
+#### Option 2: Netlify
+```powershell
+cd frontend
+npm run build
+# Drag and drop the build/ folder to Netlify
+```
+
+#### Option 3: GitHub Pages
+```powershell
+npm install gh-pages --save-dev
+# Add to package.json scripts: "deploy": "gh-pages -d build"
+npm run deploy
+```
+
+### Production Checklist
+
+- [ ] Set all environment variables
+- [ ] Enable HTTPS
+- [ ] Configure CORS for production frontend URL
+- [ ] Set up database backups
+- [ ] Configure Firebase security rules
+- [ ] Update API base URL in frontend
+- [ ] Test all API endpoints
+- [ ] Set up monitoring and logging
 
 ---
 
-## Contact
+## 👥 Team Members
 
-- Ops / Maintainers: arya119000@gmail.com
-- Frontend: arya119000@gmail.com
-- Backend: arya119000@gmail.com
+<div align="center">
+
+### 🎓 College Project Team - B.Tech Computer Science
+
+</div>
+
+| Name | Role | Responsibilities |
+|------|------|------------------|
+| **Ayush Gangwar** | 🎯 Project Lead & Full Stack Developer | Overall architecture, Backend & Frontend development |
+| **Pratham Kumar** | 🔧 Assistant Lead & Backend Developer | Spring Boot APIs, Database design |
+| **Jatin Sharma** | 💻 Frontend Developer | React components, UI implementation |
+| **Neha Gangwar** | 🎨 UI/UX Designer & Frontend Developer | Design system, User experience |
+| **Pallavi Gangwar** | 🗄️ Database Administrator | Database schema, Query optimization |
+| **Aditya Raj** | 🧪 Testing & Quality Assurance | Test cases, Bug tracking |
+| **Sanjeev Maurya** | 📚 Documentation & API Testing | Documentation, API validation |
 
 ---
 
-## License
+## 🤝 Contributing
 
-Add your preferred license information here (MIT, Apache-2.0, etc.).
+We welcome contributions from the community! This project was created as a college project, but we're open to improvements.
+
+### How to Contribute
+
+1. **Fork the repository**
+2. **Create a feature branch**
+   ```powershell
+   git checkout -b feature/AmazingFeature
+   ```
+3. **Commit your changes**
+   ```powershell
+   git commit -m "Add some AmazingFeature"
+   ```
+4. **Push to the branch**
+   ```powershell
+   git push origin feature/AmazingFeature
+   ```
+5. **Open a Pull Request**
+
+### Contribution Guidelines
+
+- Write clear, descriptive commit messages
+- Follow existing code style and conventions
+- Add tests for new features
+- Update documentation as needed
+- Keep PRs focused and small
+
+---
+
+## 🐛 Troubleshooting
+
+### Common Issues and Solutions
+
+#### Backend Issues
+
+**Problem**: Database connection error
+```
+Solution: 
+- Check MySQL is running: net start MySQL
+- Verify database exists: CREATE DATABASE crimeportal;
+- Check credentials in application.properties
+```
+
+**Problem**: Firebase authentication fails
+```
+Solution:
+- Ensure serviceAccount.json is in Backend/ directory
+- Verify Firebase project ID matches in both frontend and backend
+- Check Firebase Authentication is enabled in console
+```
+
+**Problem**: Port 8080 already in use
+```
+Solution:
+- Change port in application.properties: server.port=8081
+- Or stop the process using: netstat -ano | findstr :8080
+```
+
+#### Frontend Issues
+
+**Problem**: CORS errors when calling API
+```
+Solution:
+- Check CorsConfig.java allows your frontend origin
+- Verify REACT_APP_API_BASE_URL in .env is correct
+```
+
+**Problem**: Firebase configuration error
+```
+Solution:
+- Double-check all Firebase env variables in .env
+- Ensure no extra spaces or quotes in .env values
+- Verify Firebase project settings match
+```
+
+**Problem**: Build fails with memory error
+```
+Solution:
+- Increase Node memory: $env:NODE_OPTIONS="--max-old-space-size=4096"
+- Clear cache: npm cache clean --force
+```
+
+### Still Having Issues?
+
+- Check the [Issues](https://github.com/Arya182-ui/crime_portal/issues) page
+- Create a new issue with detailed error logs
+- Contact the team (see below)
+
+---
+
+## 📧 Contact
+
+<div align="center">
+
+### Get in Touch
+
+**Email**: arya119000@gmail.com
+
+**GitHub**: [@Arya182-ui](https://github.com/Arya182-ui)
+
+**Project Repository**: [crime_portal](https://github.com/Arya182-ui/crime_portal)
+
+---
+
+*For bug reports and feature requests, please use the [GitHub Issues](https://github.com/Arya182-ui/crime_portal/issues) page.*
+
+</div>
+
+---
+
+## 📄 License
+
+This project is created as a college project for educational purposes. 
+
+**MIT License** - Feel free to use this project for learning and educational purposes.
+
+---
+
+## 🙏 Acknowledgments
+
+- **Firebase** - For authentication and real-time database
+- **Spring Boot** - For robust backend framework
+- **React** - For powerful frontend library
+- **Material-UI** - For beautiful UI components
+- **Our College** - For project guidance and support
+- **Open Source Community** - For amazing tools and libraries
+
+---
+
+<div align="center">
+
+### ⭐ Star this repository if you find it helpful!
+
+Made with ❤️ by the Crime Portal Team
+
+**College Project | 2025**
+
+</div>
