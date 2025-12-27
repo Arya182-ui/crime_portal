@@ -14,6 +14,7 @@
 
 [📖 Documentation](#table-of-contents) • [🚀 Quick Start](#quick-start-development) • [👥 Team](#team-members) • [📧 Contact](#contact)
 
+ ⚠️ **Note:** The server for this project is currently down. 
 </div>
 
 ---
